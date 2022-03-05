@@ -1199,6 +1199,7 @@ This page uses mostly the same code as the previous level, but session IDs are n
 
 So we explore the cookie `PHPSESSID` in the response with username=hoangp46&password=123456
 
+```
 POST /index.php HTTP/1.1
 Host: natas19.natas.labs.overthewire.org
 User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0
@@ -1214,6 +1215,7 @@ Connection: keep-alive
 Cookie: __utma=176859643.1954634464.1645363414.1646410345.1646492867.10; __utmz=176859643.1646492867.10.6.utmcsr=google|utmccn=(organic)|utmcmd=organic|utmctr=(not%20provided); PHPSESSID=3237332d686f616e67703436
 Upgrade-Insecure-Requests: 1
 Cache-Control: max-age=0
+```
 
 The cookie `PHPSESSID=3237332d686f616e67703436` look like HEX format, try decode it we get `273-hoangp46` -> now we can brute-force to find the PHPSESSID of admin with payload `HEX(§640§-admin)`. This following python code `solve.py`:
 
