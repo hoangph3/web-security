@@ -2,19 +2,25 @@
 
 1. Thuật toán mã hóa ECB là một thuật toán mã hóa cơ bản (yếu). Đầu vào là chuỗi plain text được chia thành các block đều nhau, mỗi block có độ dài là `N` bytes (tương đương với `N` ký tự theo chuẩn ASCII do 1 byte = 1 character). Ví dụ:
 
+```
 weareneverevergettingbacktogether -> wearenevereverge||ttingbacktogethe||r
+```
 
 - Giả sử mỗi block có độ dài bằng 16 bytes, như vậy chuỗi plain text có thể được chia thành 2 block và còn dư 1 ký tự `r`. Tuy nhiên để có thể mã hóa được thì ta phải padding vào sao cho đủ 3 block. Giả sử ở đây ta padding ký tự `X` vào chuỗi -> wearenevereverge||ttingbacktogethe||rXXXXXXXXXXXXXXX
 
 - Nếu như chuỗi plain text không được padding vào đầu, tức byte đầu tiên chính là byte `w`, chạy script mã hóa `python3 ecb_oracle.py weareneverevergettingbacktogether 0` ta được kết quả:
 
+```
 pt: wearenevereverge||ttingbacktogethe||rXXXXXXXXXXXXXXX||
 ct: 4f67795ed2ec5e509393a30b1aad4d11||16dd4dd7c3dd517222311356a3f287e1||dfad1185bf0802000f9b6580f20ba274||
+```
 
 - Tuy nhiên để tăng độ khó cho game, thông thường plain text sẽ được padding vào đầu và cuối với các chuỗi random string, ví dụ ở đây chuỗi padding prefix là `foobarbaz1234567890` và chuỗi padding postfix là `Secret42`, ký tự padding vẫn là `X`, chạy script `python3 ecb_oracle.py weareneverevergettingbacktogether` ta có kết quả:
 
+```
 pt: foobarbaz1234567||890wearenevereve||rgettingbacktoge||therSecret42XXXX||
 ct: 0215a52009de7a0105517b91b3c7e4e8||914d4e4928cf48180e0fc12ffa9e6455||862fa985d0c6692b71e0e5ab85b8dfa5||2d166151914dffb665b90a87e716a4c9||
+```
 
 2. Thuật toán ECB dễ bị khai thác, đầu tiên ta có thể tìm được `N` (số bytes trong 1 block) bằng cách thay đổi độ dài của chuỗi plain text đầu vào và dựa vào số lượng khối ciphertext trả về. Brute-force `N` với script sau:
 
@@ -22,6 +28,7 @@ ct: 0215a52009de7a0105517b91b3c7e4e8||914d4e4928cf48180e0fc12ffa9e6455||862fa985
 
 - Ở đây chúng ta thay đổi độ dài plain text từ 1 -> 40, phía server sẽ mã hóa và trả về response:
 
+```
 1
 pt: foobarbaz1234567||890ASecret42XXXX||
 ct: 0215a52009de7a0105517b91b3c7e4e8||ada1ed6764f0e4292c850631aad51009||
@@ -142,6 +149,7 @@ ct: 0215a52009de7a0105517b91b3c7e4e8||ebde81de5ef1d96ef9add35ff8cadfae||a8ab74fc
 40
 pt: foobarbaz1234567||890AAAAAAAAAAAAA||AAAAAAAAAAAAAAAA||AAAAAAAAAAASecre||t42XXXXXXXXXXXXX||
 ct: 0215a52009de7a0105517b91b3c7e4e8||ebde81de5ef1d96ef9add35ff8cadfae||a8ab74fc58026896c6b988b0fa534291||1f2062cce231f61e2e02b06a5faaec86||977a52910394964c3b51c57165b40e48||
+```
 
 Nhận xét:
 
@@ -159,6 +167,7 @@ Nhận xét:
 
 Ở đây chúng ta cố định payload plain text = 'A' * 2 * N = 'A' * 2 * 16 = 'A' * 32. Sau đó tiến hành padding lần lượt 'B', 'BB', 'BBB', ... vào plain text và xem response:
 
+```
 0
 pt: foobarbaz1234567||890AAAAAAAAAAAAA||AAAAAAAAAAAAAAAA||AAASecret42XXXXX||
 ct: 0215a52009de7a0105517b91b3c7e4e8||ebde81de5ef1d96ef9add35ff8cadfae||a8ab74fc58026896c6b988b0fa534291||90dd516229e08b7c6c3bd17ddc41ad5d||
@@ -222,5 +231,6 @@ ct: 0215a52009de7a0105517b91b3c7e4e8||8931ed3815d4a0e7974c9437309be9ab||6c20eb64
 20
 pt: foobarbaz1234567||890BBBBBBBBBBBBB||BBBBBBBAAAAAAAAA||AAAAAAAAAAAAAAAA||AAAAAAASecret42X||
 ct: 0215a52009de7a0105517b91b3c7e4e8||8931ed3815d4a0e7974c9437309be9ab||b9e952bc661fddcfda47d8162806506e||a8ab74fc58026896c6b988b0fa534291||50907298aff59ada2168354a63b2f9be||
+```
 
 - Nhận xét thấy với len(padding) = 13 thì ta có 2 ciphertext giống nhau liên tiếp `a8ab74fc58026896c6b988b0fa534291`. Như vậy plain text sẽ bắt đầu từ byte thứ `N - 13 + 1 = 16 - 13 + 1 = 4` của block, (trong đó 16 - 13 = 3 bytes chính là một phần của prefix, cần phải padding = 13 mới hoàn thành block = 16 bytes, do đó plain text được tính bắt đầu từ byte thứ 3 + 1 = 4). 
