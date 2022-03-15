@@ -266,4 +266,4 @@ ct: 0215a52009de7a0105517b91b3c7e4e8||8931ed3815d4a0e7974c9437309be9ab||17879752
 
 Server sẽ trả về cipher text của chuỗi `AAAAAAAAAAAAAAS?` bằng `17879752d4238d38c4a711596884cd75`, brute-force ta cũng tìm được ký tự `?=e`.
 
--> Tấn công phát lại cho đến khi số block mã hóa bị giảm đi, ta sẽ tìm được phần postfix.
+-> Tấn công phát lại cho đến khi số block mã hóa bị giảm đi, ta sẽ tìm được phần `postfix`.
