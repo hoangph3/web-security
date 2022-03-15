@@ -161,7 +161,7 @@ Nhận xét:
 
 -> Như vậy cứ 38 - 22 = 22 - 6 = 16 ký tự thì số lượng block tăng lên 1 -> block size = N = 16.
 
-3. Tiếp theo, ta có thể xác định được vị trí bắt đầu (còn gọi là byte offset) của chuỗi plain text, trong trường hợp plain text bị padding đầu và đuôi, ví dụ như: `prefix=foobarbaz1234567890`, `plain_text=weareneverevergettingbacktogether`, `postfix=Secret42`.
+3. Tiếp theo, ta có thể xác định được vị trí bắt đầu của chuỗi plain text, trong trường hợp plain text bị padding đầu và đuôi, ví dụ như: `prefix=foobarbaz1234567890`, `plain_text=weareneverevergettingbacktogether`, `postfix=Secret42`.
 
 - Vị trí byte offset sẽ được tìm thấy bằng cách padding một chuỗi vào trước plain text với chiều dài plain text cố định là `2N`, cho đến khi chúng ta nhận được response là 2 block liền kề có cùng kết quả mã hóa (ciphertext). Vị trí byte offset chính là chiều dài của chuỗi mà chúng ta padding vào. Brute-force byte offset với script sau:
 
@@ -237,4 +237,33 @@ pt: foobarbaz1234567||890BBBBBBBBBBBBB||BBBBBBBAAAAAAAAA||AAAAAAAAAAAAAAAA||AAAA
 ct: 0215a52009de7a0105517b91b3c7e4e8||8931ed3815d4a0e7974c9437309be9ab||b9e952bc661fddcfda47d8162806506e||a8ab74fc58026896c6b988b0fa534291||50907298aff59ada2168354a63b2f9be||
 ```
 
-- Nhận xét thấy với len(padding) = 13 thì ta có 2 ciphertext giống nhau liên tiếp `a8ab74fc58026896c6b988b0fa534291`. Như vậy plain text sẽ bắt đầu từ byte thứ `N - 13 + 1 = 16 - 13 + 1 = 4` của block, (trong đó 16 - 13 = 3 bytes chính là một phần của prefix, cần phải padding = 13 mới hoàn thành block = 16 bytes, do đó plain text được tính bắt đầu từ byte thứ 3 + 1 = 4). 
+- Nhận xét thấy với len(padding) = 13 thì ta có 2 ciphertext giống nhau liên tiếp `a8ab74fc58026896c6b988b0fa534291`. Như vậy plain text sẽ bắt đầu từ byte thứ `N - 13 + 1 = 16 - 13 + 1 = 4` của block, dĩ nhiên block thứ mấy thì ta chưa biết (trong đó 16 - 13 = 3 bytes chính là một phần của prefix, cần phải padding = 13 mới hoàn thành block = 16 bytes, do đó plain text được tính bắt đầu từ byte thứ 3 + 1 = 4).
+
+4. Sau khi đã xác định được byte offset, ta sẽ tiến hành tấn công để đọc được plaintext mà không cần đến key mã hóa.
+
+- Cố định payload plain text có độ dài bằng `N - 1`, ví dụ: 'A' * (N - 1) = 'A' * 15.
+
+- Padding vào trước payload plain text một chuỗi có độ dài bằng đúng số byte offset, ví dụ: 'B' * 13.
+
+Ở đây, số byte offset = 13 sẽ được bù vào để fill đầy 1 block, tiếp theo payload plain text có độ dài bằng 15 < 16 không fill đầy block nên phải mượn thêm 1 byte của phần postfix. Vì ta có kết quả ciphertext nên ta có thể brute-force 1 byte mượn này.
+
+```
+python3 ecb_oracle.py $(python3 -c "print('B' * 13 + 'A' * 15)");
+
+pt: foobarbaz1234567||890BBBBBBBBBBBBB||AAAAAAAAAAAAAAAS||ecret42XXXXXXXXX||
+ct: 0215a52009de7a0105517b91b3c7e4e8||8931ed3815d4a0e7974c9437309be9ab||0fe034bf3bfb094ec51deee8384e8243||c998c36f356089bf76b49646fa4e8946||
+```
+Giả sử trường hợp này ta không biết gì về chuỗi `postfix=Secret42`, nhưng ta biết rằng ciphertext của chuỗi `AAAAAAAAAAAAAAA?` bằng `0fe034bf3bfb094ec51deee8384e8243` (`?` là 1 byte mượn). Brute-force tối đa 255 lần (255 ký tự trong bảng mã ASCII) thì sẽ tìm được kí tự `?`. Trường hợp này ta tìm được `?=S`
+
+Tiếp tục cố định payload plain text có độ dài bằng `N - 2` -> 'A' * 14, lúc này plain text sẽ phải mượn 16 - 14 = 2 bytes nhưng do 1 byte `S` đã biết nên chỉ cần brute-force 1 byte còn lại.
+
+```
+python3 ecb_oracle.py $(python3 -c "print('B' * 13 + 'A' * 14)");
+
+pt: foobarbaz1234567||890BBBBBBBBBBBBB||AAAAAAAAAAAAAASe||cret42XXXXXXXXXX||
+ct: 0215a52009de7a0105517b91b3c7e4e8||8931ed3815d4a0e7974c9437309be9ab||17879752d4238d38c4a711596884cd75||20e48c85235cc96c075967e7abcda690||
+```
+
+Server sẽ trả về cipher text của chuỗi `AAAAAAAAAAAAAAS?` bằng `17879752d4238d38c4a711596884cd75`, brute-force ta cũng tìm được ký tự `?=e`.
+
+-> Tấn công phát lại cho đến khi số block mã hóa bị giảm đi, ta sẽ tìm được phần postfix.
