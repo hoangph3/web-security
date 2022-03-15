@@ -6,7 +6,7 @@
 weareneverevergettingbacktogether -> wearenevereverge||ttingbacktogethe||r
 ```
 
-- Giả sử mỗi block có độ dài bằng 16 bytes, như vậy chuỗi plain text có thể được chia thành 2 block và còn dư 1 ký tự `r`. Tuy nhiên để có thể mã hóa được thì ta phải padding vào sao cho đủ 3 block. Giả sử ở đây ta padding ký tự `X` vào chuỗi -> wearenevereverge||ttingbacktogethe||rXXXXXXXXXXXXXXX
+- Giả sử mỗi block có độ dài bằng 16 bytes, như vậy chuỗi plain text có thể được chia thành 2 block và còn dư 1 ký tự `r`. Tuy nhiên để có thể mã hóa được thì ta phải padding vào sao cho đủ 3 block. Giả sử ở đây ta padding ký tự `X` vào chuỗi -> `wearenevereverge||ttingbacktogethe||rXXXXXXXXXXXXXXX`
 
 - Nếu như chuỗi plain text không được padding vào đầu, tức byte đầu tiên chính là byte `w`, chạy script mã hóa `python3 ecb_oracle.py weareneverevergettingbacktogether 0` ta được kết quả:
 
@@ -24,7 +24,9 @@ ct: 0215a52009de7a0105517b91b3c7e4e8||914d4e4928cf48180e0fc12ffa9e6455||862fa985
 
 2. Thuật toán ECB dễ bị khai thác, đầu tiên ta có thể tìm được `N` (số bytes trong 1 block) bằng cách thay đổi độ dài của chuỗi plain text đầu vào và dựa vào số lượng khối ciphertext trả về. Brute-force `N` với script sau:
 
-`for i in {1..40}; do echo $i; python3 ecb_oracle.py $(python3 -c "print('A' * $i)"); done`
+```
+for i in {1..40}; do echo $i; python3 ecb_oracle.py $(python3 -c "print('A' * $i)"); done
+```
 
 - Ở đây chúng ta thay đổi độ dài plain text từ 1 -> 40, phía server sẽ mã hóa và trả về response:
 
@@ -163,7 +165,9 @@ Nhận xét:
 
 - Vị trí byte offset sẽ được tìm thấy bằng cách padding một chuỗi vào trước plain text với chiều dài plain text cố định là `2N`, cho đến khi chúng ta nhận được response là 2 block liền kề có cùng kết quả mã hóa (ciphertext). Vị trí byte offset chính là chiều dài của chuỗi mà chúng ta padding vào. Brute-force byte offset với script sau:
 
-`for i in {1..20}; do echo $i; python3 ecb_oracle.py $(python3 -c "print('B' * $i + 'A' * 32)"); done`
+```
+for i in {1..20}; do echo $i; python3 ecb_oracle.py $(python3 -c "print('B' * $i + 'A' * 32)"); done
+```
 
 Ở đây chúng ta cố định payload plain text = 'A' * 2 * N = 'A' * 2 * 16 = 'A' * 32. Sau đó tiến hành padding lần lượt 'B', 'BB', 'BBB', ... vào plain text và xem response:
 
