@@ -502,7 +502,7 @@ Choose a JPEG to upload (max 1KB):<br/>
 <? } ?>
 ```
 
-This is Unrestricted File Upload from client-side. We can change `.jpg` to `.php` in `<input>` of html, then upload `shell.php` file to excute some tasks.
+This is Unrestricted File Upload from client-side. We can change `.jpg` to `.php` in `<input>` of html, then upload `shell.php` file to execute some tasks.
 
 ```php
 <?php // shell.php
@@ -2604,7 +2604,7 @@ $phar->stopBuffering();
 ?>
 ```
 
-With `$signature=True`, the application will excute `passthru("php " . "getpwd.php");` and show the password.
+With `$signature=True`, the application will execute `passthru("php " . "getpwd.php");` and show the password.
 
 Run `php make_phar.php` to make phar, but it's not working:
 
@@ -2654,7 +2654,7 @@ Firmware upgrad initialised.
 Upload Firmware Update:
 ```
 
-Resend POST the previous request with `filename=phar://test.phar/test.txt` in Body Parameters to deserialize Phar, the application will run md5_file() function and excute code in `getpwd.php`, we get the password:
+Resend POST the previous request with `filename=phar://test.phar/test.txt` in Body Parameters to deserialize Phar, the application will run md5_file() function and execute code in `getpwd.php`, we get the password:
 
 ```
 /natas33/uploadCongratulations! Running firmware update: getpwd.php <br>shu5ouSu6eicielahhae0mohd4ui5uig
