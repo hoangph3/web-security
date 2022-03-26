@@ -304,7 +304,7 @@ Try decode it:
 
 We need brute-force to find secret: 4kBPNf7Y6BrtP-Y3A-vQXPY9jAh_d0E6L4IUjL65CvmEjgdTZyr2ag-TM-glH6EYKGgO3dBYbhblaPQsbeClcw
 
-In this challenge, I will use `https://github.com/brendan-rius/c-jwt-cracker` to brute-force secret:
+In this challenge, I will use https://github.com/brendan-rius/c-jwt-cracker to brute-force secret:
 
 `./jwtcrack eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJyb2xlIjoiZ3Vlc3QifQ.4kBPNf7Y6BrtP-Y3A-vQXPY9jAh_d0E6L4IUjL65CvmEjgdTZyr2ag-TM-glH6EYKGgO3dBYbhblaPQsbeClcw qwertyuiopasdfghjklzxvbnm1234567890 6 sha512`
 
